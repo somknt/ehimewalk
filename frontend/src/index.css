@@ -1,0 +1,102 @@
+@import "tailwindcss";
+
+@theme {
+  /* 愛媛のみかん */
+  --color-mikan-50: #fff6e8;
+  --color-mikan-100: #ffe8c2;
+  --color-mikan-200: #ffd27a;
+  --color-mikan-300: #ffbb47;
+  --color-mikan-400: #f9a61f;
+  --color-mikan-500: #f39800;
+  --color-mikan-600: #d97f00;
+  --color-mikan-700: #b05f00;
+  --color-mikan-800: #8a4a05;
+
+  /* 瀬戸内海 */
+  --color-seto-50: #ebfafd;
+  --color-seto-100: #cdf2f9;
+  --color-seto-200: #9fe5f2;
+  --color-seto-300: #6fd3e6;
+  --color-seto-400: #4cc3d9;
+  --color-seto-500: #2aa5bd;
+  --color-seto-600: #1f8399;
+  --color-seto-700: #1b6a7c;
+
+  /* 自然と健康 */
+  --color-leaf-50: #eef8ee;
+  --color-leaf-100: #d4eed5;
+  --color-leaf-300: #86c988;
+  --color-leaf-500: #4caf50;
+  --color-leaf-600: #3b8f3f;
+  --color-leaf-700: #2e7031;
+
+  --color-cream: #fff8ee;
+  --color-ink: #3d2b1f;
+  --color-ink-soft: #6b5546;
+
+  --font-pixel: "DotGothic16", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  --font-sans: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", "Meiryo", "Noto Sans JP", sans-serif;
+}
+
+@layer base {
+  /* 高齢者にも読みやすいよう、rem の基準を 17px にする */
+  html {
+    font-size: 17px;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-cream font-sans text-ink antialiased;
+    min-height: 100dvh;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-seto-500);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* RPG のウィンドウ風カード */
+  .rpg-card {
+    @apply rounded-2xl border-[3px] border-ink bg-white;
+    box-shadow: 0 4px 0 0 var(--color-ink);
+  }
+
+  .rpg-button {
+    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border-[3px] border-ink px-4 font-pixel text-lg transition-transform;
+    box-shadow: 0 4px 0 0 var(--color-ink);
+  }
+
+  .rpg-button:active {
+    transform: translateY(3px);
+    box-shadow: 0 1px 0 0 var(--color-ink);
+  }
+
+  .pixelated {
+    image-rendering: pixelated;
+  }
+}
+
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.animate-bob {
+  animation: bob 1.6s steps(2, end) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-bob {
+    animation: none;
+  }
+  .rpg-button {
+    transition: none;
+  }
+}

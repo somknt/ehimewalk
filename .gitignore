@@ -1,0 +1,18 @@
+node_modules/
+dist/
+coverage/
+*.log
+
+# 環境変数（秘密情報を含む可能性があるためコミットしない。.env.example だけを置く）
+.env
+.env.*
+!.env.example
+
+# AWS
+.aws-sam/
+cdk.out/
+
+# OS・エディタ
+.DS_Store
+Thumbs.db
+.idea/
