@@ -6,18 +6,25 @@ import { HomePage } from './pages/HomePage'
 import { MyPage } from './pages/MyPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { RankingPage } from './pages/RankingPage'
+import { SpotDetailPage } from './pages/SpotDetailPage'
+import { WelcomePage } from './pages/WelcomePage'
+import { SessionProvider } from './session/SessionProvider'
 
 export default function App() {
   return (
-    <Routes>
-      <Route element={<AppLayout />}>
-        <Route index element={<HomePage />} />
-        <Route path="adventure" element={<AdventurePage />} />
-        <Route path="gacha" element={<GachaPage />} />
-        <Route path="ranking" element={<RankingPage />} />
-        <Route path="mypage" element={<MyPage />} />
-        <Route path="*" element={<NotFoundPage />} />
-      </Route>
-    </Routes>
+    <SessionProvider>
+      <Routes>
+        <Route path="welcome" element={<WelcomePage />} />
+        <Route element={<AppLayout />}>
+          <Route index element={<HomePage />} />
+          <Route path="adventure" element={<AdventurePage />} />
+          <Route path="adventure/spots/:spotId" element={<SpotDetailPage />} />
+          <Route path="gacha" element={<GachaPage />} />
+          <Route path="ranking" element={<RankingPage />} />
+          <Route path="mypage" element={<MyPage />} />
+          <Route path="*" element={<NotFoundPage />} />
+        </Route>
+      </Routes>
+    </SessionProvider>
   )
 }

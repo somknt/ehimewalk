@@ -92,8 +92,93 @@
   animation: bob 1.6s steps(2, end) infinite;
 }
 
+/* ---- ガチャ演出 ---- */
+@keyframes gacha-shake {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  20% {
+    transform: rotate(-6deg);
+  }
+  40% {
+    transform: rotate(6deg);
+  }
+  60% {
+    transform: rotate(-4deg);
+  }
+  80% {
+    transform: rotate(4deg);
+  }
+}
+
+@keyframes capsule-drop {
+  0% {
+    transform: translateY(-40px) scale(0.6);
+    opacity: 0;
+  }
+  60% {
+    transform: translateY(6px) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes reveal-pop {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.animate-gacha-shake {
+  animation: gacha-shake 0.45s ease-in-out 3;
+}
+.animate-capsule-drop {
+  animation: capsule-drop 0.6s ease-out both;
+}
+.animate-reveal-pop {
+  animation: reveal-pop 0.5s ease-out both;
+}
+.animate-spin-slow {
+  animation: spin-slow 6s linear infinite;
+}
+.animate-twinkle {
+  animation: twinkle 1.2s steps(3, end) infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .animate-bob {
+  .animate-bob,
+  .animate-gacha-shake,
+  .animate-capsule-drop,
+  .animate-reveal-pop,
+  .animate-spin-slow,
+  .animate-twinkle {
     animation: none;
   }
   .rpg-button {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ApiError } from '../api'
+import { toUserMessage } from '../api'
 
 export type LoadState<T> =
   | { status: 'loading' }
@@ -9,7 +9,7 @@ export type LoadState<T> =
 const FALLBACK_ERROR = 'データを読み込めませんでした。時間をおいて、もう一度お試しください。'
 
 function toErrorState(error: unknown): LoadState<never> {
-  return { status: 'error', message: error instanceof ApiError ? error.userMessage : FALLBACK_ERROR }
+  return { status: 'error', message: toUserMessage(error, FALLBACK_ERROR) }
 }
 
 /** 非同期の読み込みと、読み込み中・エラー・再試行の状態をまとめて扱う */

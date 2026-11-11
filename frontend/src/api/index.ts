@@ -1,4 +1,4 @@
-import { MockGameApi } from './mockApi'
+import { MockGameApi } from './mock/mockApi'
 import type { GameApi } from './types'
 
 function createApi(): GameApi {
