@@ -24,7 +24,7 @@ export function RankingPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="max-w-3xl space-y-4">
       <PageTitle lead="週間歩数で競おう。毎週月曜 0:00（日本時間）に更新されます。">ランキング</PageTitle>
 
       <div role="tablist" aria-label="ランキングの種類" className="grid grid-cols-3 gap-2">

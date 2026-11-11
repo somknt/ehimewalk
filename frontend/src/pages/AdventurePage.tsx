@@ -7,10 +7,10 @@ export function AdventurePage() {
     <div className="space-y-4">
       <PageTitle lead="愛媛の観光スポットを歩いてめぐろう。訪れると限定アイテムがもらえます。">冒険</PageTitle>
 
-      <ul className="space-y-4" aria-label="観光スポット一覧">
+      <ul className="grid gap-4 md:grid-cols-2" aria-label="観光スポット一覧">
         {SPOTS.map((spot) => (
           <li key={spot.spotId}>
-            <Card>
+            <Card className="h-full">
               <div className="flex items-start justify-between gap-2">
                 <h2 className="font-pixel text-xl">{spot.name}</h2>
                 <span className="shrink-0 text-sm text-ink-soft">{spot.municipality}</span>

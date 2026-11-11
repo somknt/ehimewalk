@@ -1,20 +1,14 @@
 import { NavLink } from 'react-router'
-import { NAV_ICONS, type NavIconName } from './icons'
+import { NAV_ICONS } from './icons'
+import { NAV_ITEMS } from './navItems'
 import { PixelArt } from './PixelArt'
 
-const NAV_ITEMS: { to: string; label: string; icon: NavIconName }[] = [
-  { to: '/', label: 'ホーム', icon: 'home' },
-  { to: '/adventure', label: '冒険', icon: 'adventure' },
-  { to: '/gacha', label: 'ガチャ', icon: 'gacha' },
-  { to: '/ranking', label: 'ランキング', icon: 'ranking' },
-  { to: '/mypage', label: 'マイページ', icon: 'mypage' },
-]
-
+/** スマートフォン・タブレット用の下部固定ナビ（幅 1024px 以上では左側メニューに切り替える） */
 export function BottomNav() {
   return (
     <nav
       aria-label="メインメニュー"
-      className="fixed inset-x-0 bottom-0 z-40 border-t-[3px] border-ink bg-white pb-[env(safe-area-inset-bottom)]"
+      className="fixed inset-x-0 bottom-0 z-40 border-t-[3px] border-ink bg-white pb-[env(safe-area-inset-bottom)] lg:hidden"
     >
       <ul className="mx-auto grid max-w-md grid-cols-5">
         {NAV_ITEMS.map((item) => (
