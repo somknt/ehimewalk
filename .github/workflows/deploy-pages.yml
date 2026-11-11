@@ -1,0 +1,57 @@
+# main ブランチへの push で frontend をビルドし、GitHub Pages に公開する。
+# 初回だけ、リポジトリの Settings → Pages → Source を「GitHub Actions」にする必要がある。
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+      - run: npm run lint
+
+      # Pages の URL は https://<ユーザー>.github.io/<リポジトリ名>/ なので、base をリポジトリ名に合わせる
+      - run: npm run build -- --base=/${{ github.event.repository.name }}/
+
+      # 画面の URL を直接開いたり再読み込みしたりしても表示できるよう、404 でもアプリを返す
+      - run: cp dist/index.html dist/404.html
+
+      - uses: actions/configure-pages@v6
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: frontend/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
