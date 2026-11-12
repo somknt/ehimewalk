@@ -27,9 +27,8 @@ export interface StepSyncResult {
 
 export interface PointBalance {
   balance: number
-  /** 今日付与済みの歩数ポイント */
+  /** 今日付与済みの歩数コイン（1 日の上限は無い） */
   todayStepPoints: number
-  dailyStepPointCap: number
   /** 今日のログインボーナスを受け取り済みか */
   loginBonusClaimedToday: boolean
   /** ログインボーナスでもらえるコイン */
@@ -85,7 +84,7 @@ export interface GachaDrawResult {
   balance: number
 }
 
-/** デモ操作の履歴（開発モードのデータにだけ存在する） */
+/** デモ操作の履歴 */
 export interface DemoHistoryEntry {
   id: string
   kind: 'coins' | 'steps'
@@ -97,17 +96,18 @@ export interface DemoHistoryEntry {
 }
 
 export const DEMO_COIN_AMOUNTS = [100, 500, 1000] as const
-export const DEMO_STEP_AMOUNTS = [100, 1000, 5000] as const
+export const DEMO_STEP_AMOUNTS = [100, 1000, 5000, 10000] as const
 export type DemoCoinAmount = (typeof DEMO_COIN_AMOUNTS)[number]
 export type DemoStepAmount = (typeof DEMO_STEP_AMOUNTS)[number]
 
 /**
- * 開発用のデモ操作。開発モードのモック API でだけ使える。
+ * 動作確認・発表用のデモ操作。モック API（端末内で動く版）でだけ使える。
+ * デモで追加した歩数は記録上区別し、正式ランキングには入れない。
  * 本番の API（フェーズ2 の HttpGameApi）では必ず null にし、サーバー側にもこの操作の入口を作らない。
  */
 export interface DemoTools {
   addCoins(amount: DemoCoinAmount): Promise<PointBalance>
-  /** 今日の歩数を増やし、通常の規則（100 歩 = 1 コイン、1 日 100 コインまで）でコインを付与する */
+  /** 今日の歩数を増やし、通常の規則（100 歩 = 1 コイン、上限なし）でコインを付与する */
   addSteps(steps: DemoStepAmount): Promise<{ todaySteps: number; awardedPoints: number; balance: PointBalance }>
   getHistory(limit?: number): Promise<DemoHistoryEntry[]>
 }
@@ -182,7 +182,12 @@ export interface RankingResult {
     eligible: boolean
     /** 対象外の場合、自分の歩数を入れたら何位に相当するか（参考） */
     referenceRank: number
-    excludedReason?: 'demo_data' | 'not_opted_in'
+    /**
+     * demo_data：デモで作った・追加した歩数を含む
+     * unverified：端末のセンサーで数えた歩数（不正防止の仕組みができるまで正式な順位に入れない）
+     * not_opted_in：愛媛県ランキングに参加していない
+     */
+    excludedReason?: 'demo_data' | 'unverified' | 'not_opted_in'
   }
 }
 
@@ -331,6 +336,7 @@ export type ApiErrorCode =
   | 'demo_unavailable'
   | 'invalid_input'
   | 'not_found'
+  | 'sensor_unavailable'
 
 /** 利用者に見せてよいエラー */
 export class ApiError extends Error {

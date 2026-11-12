@@ -109,8 +109,10 @@ function MyStatus({ result }: { result: RankingResult }) {
         </p>
       ) : (
         <p className="mt-1 text-sm">
-          デモデータの歩数のため、正式な順位には入りません（参考：<span className="font-bold">{me.referenceRank}位</span>相当）。
-          スマートフォンの歩数と連携すると参加できます。
+          {me.excludedReason === 'demo_data'
+            ? 'デモ操作で追加した歩数を含むため、正式な順位には入りません'
+            : '端末のセンサーで数えた歩数は、不正防止の確認ができるまで正式な順位には入りません'}
+          （参考：<span className="font-bold">{me.referenceRank}位</span>相当）。
         </p>
       )}
     </Card>

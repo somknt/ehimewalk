@@ -14,7 +14,12 @@ import { useAsyncData } from '../hooks/useAsyncData'
 import { useSession } from '../session/sessionContext'
 
 const GOAL_PRESETS = [4000, 6000, 8000, 10000]
-const SOURCE_LABELS: Record<StepRecord['source'], string> = { demo: 'デモ', healthkit: 'ヘルスケア', health_connect: 'ヘルスコネクト' }
+const SOURCE_LABELS: Record<StepRecord['source'], string> = {
+  device_motion: 'センサー',
+  demo: 'デモ',
+  healthkit: 'ヘルスケア',
+  health_connect: 'ヘルスコネクト',
+}
 
 function ErrorText({ message }: { message: string | null }) {
   if (!message) return null

@@ -239,14 +239,21 @@ describe('デモ操作（開発モード）', () => {
     expect((await api.syncSteps()).awardedPoints).toBe(5)
   })
 
-  it('1日10,000歩（100コイン）の上限を超えて付与しない', async () => {
+  it('1日の上限は無く、10,000歩を超えても100歩ごとに付与する', async () => {
     const api = createApi()
     for (let i = 0; i < 3; i++) await api.demo!.addSteps(5000)
     const balance = await api.getPointBalance()
-    expect(balance).toMatchObject({ balance: 100, todayStepPoints: 100 })
+    expect(balance).toMatchObject({ balance: 150, todayStepPoints: 150 })
     expect((await api.getStepRecords(TODAY, TODAY))[0].steps).toBe(15_000)
     const history = await api.demo!.getHistory()
-    expect(history.map((h) => h.awardedCoins)).toEqual([0, 50, 50])
+    expect(history.map((h) => h.awardedCoins)).toEqual([50, 50, 50])
+  })
+
+  it('デモ操作で足した歩数は、正式ランキングの対象外として記録する', async () => {
+    const api = createApi()
+    await api.demo!.addSteps(1000)
+    expect((await api.getStepRecords(TODAY, TODAY))[0].verification).toBe('excluded')
+    expect((await api.getRanking('all')).me.excludedReason).toBe('demo_data')
   })
 
   it('実際の歩数データ（デモ以外）にはデモの歩数を追加できない', async () => {

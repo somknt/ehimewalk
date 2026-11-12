@@ -19,7 +19,7 @@ flowchart LR
     UI[React 画面] --> API[GameApi インターフェース]
     API --> Mock[MockGameApi<br/>モックサーバー]
     Mock --> Domain[domain/<br/>ポイント・日付・推定値]
-    Mock --> Demo[DemoStepProvider<br/>デモ歩数]
+    Mock --> Demo[DeviceMotionStepProvider<br/>端末のセンサーの歩数]
     Mock --> LS[(localStorage)]
     Mock --> Master[data/<br/>スポット・アイテム]
   end
@@ -180,7 +180,7 @@ interface StepDataProvider {
 }
 ```
 
-- `DemoStepProvider`：日付から決まる疑似乱数で過去分を生成し、今日の分は時刻に応じて増える。同じ日付なら何度呼んでも同じ値になる。
+- `DeviceMotionStepProvider`：端末の加速度センサー（devicemotion）で、アプリを開いて計測している間に数えた歩数を日付ごとに端末へ保存し、同期で返す。はじめは 0 歩。センサーの歩数は `pending`（検証待ち）とし、正式ランキングには入れない。デモ操作で足した歩数は `demoAddedSteps` として区別し `excluded` にする。
 - 記録には `source` を必ず付け、サーバー側で `demo` を正式ランキングから除外する。
 
 ## 5. ゲーム規則
@@ -190,13 +190,13 @@ interface StepDataProvider {
 | 規則 | 値 |
 |---|---|
 | 歩数ポイント | 100 歩 = 1 pt（端数切り捨て） |
-| 1 日の上限 | 10,000 歩分 = 100 pt |
+| 1 日の上限 | なし（2026-11-12 廃止）。1 日 100,000 歩を超える記録は異常値として受け付けない |
 | ガチャ 1 回 | 50 pt |
 | ログインボーナス | 1 日 1 回 10 pt（仮） |
 
 **二重付与の防止：** 日付ごとに「付与済みポイント」を記録し、同期のたびに `付与額 = max(0, その日の歩数ポイント − 付与済みポイント)` を付与する。DynamoDB では付与済み記録の更新と残高の加算を `TransactWriteItems` で 1 つにまとめ、条件式（`awarded = :expected`）で同時実行時の重複を防ぐ。
 
-**デモ歩数のポイント：** モック環境とデモ環境ではデモ歩数にもポイントを付与し、ゲームの流れを体験できるようにする。本番環境ではデモ歩数にポイントを付与しない。
+**デモ操作：** モック環境（公開版を含む）では、発表・動作確認のためにコインと歩数をデモ操作で追加でき、通常の規則でコインを付与する。本番の API（HttpGameApi）にはデモ操作の入口を作らない。
 
 ### 5.2 健康の推定値
 

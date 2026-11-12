@@ -3,8 +3,13 @@
 /** JST の日付文字列（YYYY-MM-DD） */
 export type DateKey = string
 
-/** 歩数の取得元 */
-export type StepSource = 'demo' | 'healthkit' | 'health_connect'
+/**
+ * 歩数の取得元
+ * - device_motion：この端末の加速度センサーで、アプリを開いている間に数えた歩数（Web 版）
+ * - demo：架空の歩数（テスト・古いデータ）
+ * - healthkit / health_connect：OS の健康データ（ネイティブアプリ化後）
+ */
+export type StepSource = 'device_motion' | 'demo' | 'healthkit' | 'health_connect'
 
 /** サーバー側の検証結果。trusted だけが正式ランキングに反映される */
 export type StepVerification = 'trusted' | 'pending' | 'excluded'

@@ -5,7 +5,7 @@ import { isValidLatLng, judgeCheckIn } from '../domain/checkin'
 import { addDays, dateRange, dayOfWeek, isDateKey, startOfMonth, startOfWeek, toJstDateKey } from '../domain/date'
 import { drawItem, secureRandom, type RandomSource } from '../domain/gacha'
 import { proposeWeeklyGoal } from '../domain/mission'
-import { DAILY_STEP_POINT_CAP, GACHA_COST, pointsShortForGacha, pointsToAward } from '../domain/points'
+import { GACHA_COST, pointsShortForGacha, pointsToAward } from '../domain/points'
 import { googleMapsWalkingUrl, planQuest, type QuestPlan } from '../domain/questPlanner'
 import { clampDailyGoal, DEFAULT_DAILY_GOAL, MAX_DAILY_GOAL, MIN_DAILY_GOAL, summarizeSteps } from '../domain/steps'
 import { DEFAULT_TITLE_ID, evaluateTitles, TITLES, titleIdFromName, titleName } from '../domain/titles'
@@ -36,7 +36,7 @@ import {
 import { EHIME_PREFECTURE_CODE, getSpot, QUEST_INTERESTS, SPOTS } from '../data/spots'
 import { EYE_COLORS, HAIR_COLORS, HAIR_STYLES, SKIN_TONES } from '../features/character/sprites'
 import { SAMPLE_USERS, sampleWeeklySteps } from './sampleUsers'
-import { DemoStepProvider } from './stepProviders/demoStepProvider'
+import { DeviceMotionStepProvider } from './stepProviders/deviceMotionStepProvider'
 import type { StepDataProvider } from './stepProviders/types'
 import {
   ApiError,
@@ -86,7 +86,9 @@ const MAX_ACCEPTED_DAILY_STEPS = 100_000
 const MAX_CHARACTER_NAME_LENGTH = 12
 
 const EQUIP_SLOTS: readonly EquipSlot[] = ['head', 'hair', 'top', 'bottom', 'shoes', 'accessory', 'background', 'pet']
-const STEP_SOURCES: readonly StepSource[] = ['demo', 'healthkit', 'health_connect']
+const STEP_SOURCES: readonly StepSource[] = ['device_motion', 'demo', 'healthkit', 'health_connect']
+/** デモ操作で歩数を足せる取得元（端末内で完結するもの。OS の健康データには混ぜない） */
+const DEMO_BOOSTABLE_SOURCES: readonly StepSource[] = ['device_motion', 'demo']
 const VERIFICATIONS: readonly StepVerification[] = ['trusted', 'pending', 'excluded']
 const POINT_REASONS: readonly PointReason[] = [
   'step_reward',
@@ -325,7 +327,7 @@ function normalizeStepAwards(raw: unknown): MockDb['stepAwards'] {
   const awards: MockDb['stepAwards'] = {}
   if (!isObject(raw)) return awards
   for (const [date, value] of Object.entries(raw)) {
-    if (isDateKey(date) && isNonNegativeInt(value)) awards[date] = Math.min(value, DAILY_STEP_POINT_CAP)
+    if (isDateKey(date) && isNonNegativeInt(value)) awards[date] = value
   }
   return awards
 }
@@ -471,8 +473,8 @@ export interface MockGameApiOptions {
   random?: RandomSource
   now?: () => Date
   /**
-   * デモ操作（コイン・歩数の追加）を使えるようにするか。
-   * 省略時は開発モード（npm run dev）のときだけ true。本番ビルドでは常に false になる
+   * デモ操作（コイン・歩数の追加）を使えるようにするか。省略時は true（発表・動作確認用）。
+   * デモで足した歩数とコインは記録上区別し、正式ランキングには入れない
    */
   enableDemoTools?: boolean
 }
@@ -629,7 +631,8 @@ export class MockGameApi implements GameApi {
     this.random = options.random ?? secureRandom
     this.now = options.now ?? (() => new Date())
     // import.meta.env.DEV は本番ビルドで false に置き換わるため、本番ではデモ操作の入口ができない
-    this.demo = (options.enableDemoTools ?? import.meta.env.DEV) ? this.createDemoTools() : null
+    // モック（端末内で動く版）では公開版でもデモ操作を使える。本番の API（HttpGameApi）には作らない
+    this.demo = (options.enableDemoTools ?? true) ? this.createDemoTools() : null
   }
 
   // ---- 保存 ----
@@ -697,7 +700,6 @@ export class MockGameApi implements GameApi {
     return {
       balance: db.balance,
       todayStepPoints: db.stepAwards[today] ?? 0,
-      dailyStepPointCap: DAILY_STEP_POINT_CAP,
       loginBonusClaimedToday: loginBonusClaimed(db, today),
       loginBonusAmount: LOGIN_BONUS_POINTS,
     }
@@ -778,9 +780,9 @@ export class MockGameApi implements GameApi {
 
   // ---- 歩数とコイン ----
 
-  private stepProvider(db: MockDb): StepDataProvider {
-    // デモ歩数はユーザー ID から決まる（データを作り直すと別のユーザーとして別の歩数になる）
-    return this.provider ?? new DemoStepProvider(db.profile.userId, this.now)
+  private stepProvider(): StepDataProvider {
+    // 省略時は、この端末のセンサーで数えた歩数（はじめは 0 歩）
+    return this.provider ?? new DeviceMotionStepProvider(undefined, this.now)
   }
 
   /**
@@ -816,8 +818,8 @@ export class MockGameApi implements GameApi {
         source,
         ...(demoAdded > 0 ? { demoAddedSteps: demoAdded } : {}),
         syncTimestamp: syncedAt,
-        // デモ歩数は正式ランキングの対象外
-        verification: source === 'demo' ? 'excluded' : 'pending',
+        // デモの歩数・デモ操作で足した歩数は正式ランキングの対象外。センサーの歩数は検証待ち（pending）
+        verification: source === 'demo' || demoAdded > 0 ? 'excluded' : 'pending',
       }
       syncedDays += 1
 
@@ -842,7 +844,7 @@ export class MockGameApi implements GameApi {
       const isFirstImport = Object.keys(before.stepRecords).length === 0
       // 初回だけは月間歩数を表示できるよう月初から取り込む（コインは直近 7 日分のみ）
       const from = isFirstImport && startOfMonth(today) < windowStart ? startOfMonth(today) : windowStart
-      const provider = this.stepProvider(before)
+      const provider = this.stepProvider()
       const fetched = await provider.getDailySteps(from, today)
 
       // ここから保存までは await を挟まない。同時に呼ばれても読み込み〜保存が割り込まれず、二重付与しない
@@ -1008,6 +1010,7 @@ export class MockGameApi implements GameApi {
       const myWeeklySteps = weekRecords.reduce((sum, r) => sum + r.steps, 0)
       // 正式ランキングには信頼済みの歩数だけを使う（デモ歩数は入れない）
       const trusted = weekRecords.length > 0 && weekRecords.every((r) => r.verification === 'trusted')
+      const hasDemo = weekRecords.some((r) => r.source === 'demo' || (r.demoAddedSteps ?? 0) > 0)
       const optedOut = scope === 'ehime' && !db.profile.ehimeRankingOptIn
 
       const rows: Omit<RankingEntry, 'rank'>[] = users.map((user) => ({
@@ -1039,7 +1042,7 @@ export class MockGameApi implements GameApi {
           weeklySteps: myWeeklySteps,
           eligible: trusted && !optedOut,
           referenceRank: 1 + rows.filter((row) => !row.isMe && row.weeklySteps > myWeeklySteps).length,
-          excludedReason: optedOut ? 'not_opted_in' : !trusted ? 'demo_data' : undefined,
+          excludedReason: optedOut ? 'not_opted_in' : trusted ? undefined : hasDemo ? 'demo_data' : 'unverified',
         },
       }
     })
@@ -1227,6 +1230,8 @@ export class MockGameApi implements GameApi {
       try {
         this.storage.removeItem(STORAGE_KEY)
         this.storage.removeItem(BROKEN_STORAGE_KEY)
+        // センサーで数えた歩数も消す（次は 0 歩から）
+        this.stepProvider().clear?.()
       } catch (error) {
         throw new ApiError('データを削除できませんでした。もう一度お試しください。', { cause: error, code: 'storage_failed' })
       }
@@ -1252,9 +1257,9 @@ export class MockGameApi implements GameApi {
           if (!DEMO_STEP_AMOUNTS.includes(steps)) throw new ApiError('追加できる歩数ではありません。', { code: 'demo_unavailable' })
           const now = this.now()
           const today = toJstDateKey(now)
-          const provider = this.stepProvider(this.loadDb())
+          const provider = this.stepProvider()
           // 実際の歩数（HealthKit など）にはデモの歩数を混ぜない
-          if (provider.source !== 'demo') {
+          if (!DEMO_BOOSTABLE_SOURCES.includes(provider.source)) {
             throw new ApiError('実際の歩数データには、デモの歩数を追加できません。', { code: 'demo_unavailable' })
           }
           const fetched = await provider.getDailySteps(today, today)

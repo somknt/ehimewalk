@@ -4,6 +4,7 @@ import { SwipePager } from '../components/SwipePager'
 import { ErrorMessage, LoadingCards } from '../components/ui'
 import { DemoToolsCard } from '../features/demo/DemoToolsCard'
 import { CharacterStage } from '../features/character/CharacterStage'
+import { StepCounterCard } from '../features/pedometer/StepCounterCard'
 import { LoginBonusCard } from '../features/points/LoginBonusCard'
 import { PointsCard } from '../features/points/PointsCard'
 import { RecommendedQuestCard } from '../features/quests/RecommendedQuestCard'
@@ -58,6 +59,7 @@ export function HomePage() {
         >
           {refreshing ? '歩数を更新しています…' : '歩数を更新する'}
         </button>
+        <StepCounterCard onSynced={() => void refresh()} />
         <PointsCard balance={balance} awardedNow={lastSync.awardedPoints} />
         <LoginBonusCard />
         <DemoToolsCard onStepsChanged={() => void refresh()} />

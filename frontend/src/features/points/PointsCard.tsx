@@ -1,7 +1,7 @@
 import { Link } from 'react-router'
 import type { PointBalance } from '../../api'
 import { CoinIcon } from '../../components/CoinBadge'
-import { Card, CardTitle, ProgressBar } from '../../components/ui'
+import { Card, CardTitle } from '../../components/ui'
 import { GACHA_COST, STEPS_PER_POINT, pointsShortForGacha } from '../../domain/points'
 import { useBalance } from '../../hooks/useBalance'
 
@@ -10,7 +10,6 @@ export function PointsCard({ balance: initial, awardedNow }: { balance: PointBal
   const shared = useBalance()
   const balance = shared.status === 'ready' ? shared.balance : initial
   const short = pointsShortForGacha(balance.balance)
-  const reachedCap = balance.todayStepPoints >= balance.dailyStepPointCap
 
   return (
     <Card>
@@ -28,18 +27,13 @@ export function PointsCard({ balance: initial, awardedNow }: { balance: PointBal
         )}
       </div>
 
-      <div className="mt-4">
-        <div className="mb-1 flex justify-between text-sm">
-          <span>今日の歩数コイン</span>
-          <span className="font-bold">
-            {balance.todayStepPoints} / {balance.dailyStepPointCap}
-          </span>
+      <div className="mt-4 rounded-xl border-2 border-ink/15 bg-cream p-3">
+        <div className="flex justify-between text-sm">
+          <span>今日の歩数でもらったコイン</span>
+          <span className="font-bold">{balance.todayStepPoints.toLocaleString('ja-JP')} コイン</span>
         </div>
-        <ProgressBar value={balance.todayStepPoints / balance.dailyStepPointCap} label="今日の歩数コインの獲得状況" />
         <p className="mt-1.5 text-sm text-ink-soft">
-          {reachedCap
-            ? '今日の歩数コインは上限に達しました。無理せず休みましょう。'
-            : `${STEPS_PER_POINT}歩ごとに1コイン。1日${balance.dailyStepPointCap}コインまでもらえます。`}
+          {STEPS_PER_POINT}歩ごとに1コイン。1日の上限はありません。体調に合わせて、無理のない範囲で歩きましょう。
         </p>
       </div>
 

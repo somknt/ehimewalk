@@ -5,6 +5,7 @@ import type { StepSource } from '../../domain/types'
 import { WeeklyStepChart } from './WeeklyStepChart'
 
 const SOURCE_LABELS: Record<StepSource, string> = {
+  device_motion: 'この端末のセンサー',
   demo: 'デモデータ',
   healthkit: 'ヘルスケア',
   health_connect: 'ヘルスコネクト',
@@ -58,6 +59,7 @@ export function TodayStepsCard({
       <p className="mt-3 text-xs text-ink-soft">
         最終同期 {formatTime(syncedAt)}
         {source === 'demo' && '・デモデータは正式ランキングに反映されません'}
+        {source === 'device_motion' && '・センサーで数えた推定の歩数です（アプリを開いて計測している間だけ数えます）'}
       </p>
     </Card>
   )
