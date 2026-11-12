@@ -8,6 +8,8 @@ export interface HomeData {
   profile: UserProfile
   character: Character
   steps: StepSummary
+  /** 今日の歩数のうち、開発用のデモ操作で追加した歩数 */
+  todayDemoAddedSteps: number
   balance: PointBalance
   quest: QuestSuggestion
   lastSync: StepSyncResult
@@ -31,6 +33,7 @@ async function loadHomeData(): Promise<HomeData> {
     profile,
     character,
     steps: summarizeSteps(records, today, profile.dailyGoal),
+    todayDemoAddedSteps: records.find((record) => record.date === today)?.demoAddedSteps ?? 0,
     balance,
     quest,
     lastSync,

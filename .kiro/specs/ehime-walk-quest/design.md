@@ -41,7 +41,7 @@ flowchart LR
   APIGW --> L5[Lambda: spots / checkin]
   L1 & L2 & L3 & L4 & L5 --> DDB[(DynamoDB)]
   L4 --> Bedrock[Amazon Bedrock]
-  L4 & L5 --> Location[Amazon Location Service<br/>経路・地図]
+  L4 & L5 --> Location[Amazon Location Service<br/>経路]
   EB[EventBridge Scheduler<br/>毎週月曜 0:00 JST] --> L6[Lambda: ランキング締め]
   L6 --> DDB
   L5 --> S3img[(S3: スポット画像)]
@@ -55,7 +55,8 @@ flowchart LR
 | 処理 | Lambda（Node.js 22 以上、TypeScript） | ゲーム処理、AI 呼び出し | 機能ごとに関数を分ける |
 | DB | DynamoDB（オンデマンド） | ユーザーデータ、マスタ | 6 章参照 |
 | AI | Bedrock | クエスト・ミッション・ガイド生成 | モデル ID は環境変数で指定 |
-| 地図・経路 | Amazon Location Service | 地図表示、徒歩経路計算 | 利用可否を要確認。不可なら利用規約に適合する別サービス |
+| 地図表示 | MapLibre GL JS + ベクトル地図（地理院の最適化ベクトルタイル、または OpenStreetMap ベースの OpenFreeMap） | 観光マップ・現在地・スポットの表示 | 2026-11-12 チームで決定。API キー不要・無料。各提供元の出典表示と利用規約に従う |
+| 経路 | Amazon Location Service | 徒歩経路計算 | 利用可否を要確認。不可なら利用規約に適合する別サービス |
 | 定期実行 | EventBridge Scheduler | 週間ランキングの締め | タイムゾーン `Asia/Tokyo` |
 | 画像 | S3 | スポット写真、アイテム画像 | CloudFront 経由で配信 |
 | 監視 | CloudWatch、AWS Budgets | ログ、予算アラート | |
@@ -214,7 +215,8 @@ interface StepDataProvider {
 
 ### 5.4 ガチャ
 
-- 排出率はマスタで管理し（初期値 N 70% / R 25% / SR 5%）、画面に同じ値を表示する。
+- 排出率はマスタで管理し（初期値 N 60% / R 30% / SR 9% / SSR 1%）、画面に同じ値を表示する。レア度を決めた後、同じレア度の中から等確率で 1 つ選ぶ（`domain/gacha.ts`）。
+- 持っているアイテムが出たときは所持数を増やさず、レア度に応じたコインに変換する（`data/items.ts` の `GACHA_DUPLICATE_COINS`、初期値 N 5・R 15・SR 30・SSR 50。取引理由 `gacha_refund`）。コイン消費と変換は 1 回の書き込みで保存する。
 - 抽選はサーバー側の暗号論的乱数（`crypto.randomInt`）で行う。
 - ポイント減算、アイテム追加、ガチャ履歴の記録を 1 トランザクションで行う。
 

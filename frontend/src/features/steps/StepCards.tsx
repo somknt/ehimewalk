@@ -18,7 +18,18 @@ function formatTime(iso: string): string {
   )
 }
 
-export function TodayStepsCard({ steps, source, syncedAt }: { steps: StepSummary; source: StepSource; syncedAt: string }) {
+export function TodayStepsCard({
+  steps,
+  source,
+  syncedAt,
+  demoAddedSteps = 0,
+}: {
+  steps: StepSummary
+  source: StepSource
+  syncedAt: string
+  /** 今日の歩数のうちデモ操作で追加した分（実際の歩数と区別して表示する） */
+  demoAddedSteps?: number
+}) {
   const remaining = Math.max(0, steps.goal - steps.todaySteps)
   const percent = Math.round(steps.goalRate * 100)
 
@@ -31,6 +42,9 @@ export function TodayStepsCard({ steps, source, syncedAt }: { steps: StepSummary
         {formatSteps(steps.todaySteps)}
         <span className="ml-2 text-xl">歩</span>
       </p>
+      {demoAddedSteps > 0 && (
+        <p className="mt-1 text-sm text-seto-700">うちデモ操作で追加：{formatSteps(demoAddedSteps)} 歩</p>
+      )}
       <p className="mt-2 text-ink-soft">
         今日の目標 <span className="font-bold text-ink">{formatSteps(steps.goal)}</span> 歩
       </p>

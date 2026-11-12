@@ -1,7 +1,17 @@
-import { Link, Outlet } from 'react-router'
+import { useEffect } from 'react'
+import { Link, Outlet, useLocation } from 'react-router'
 import { api } from '../api'
 import { BottomNav } from './BottomNav'
+import { CoinBadge } from './CoinBadge'
 import { SideNav } from './SideNav'
+
+/** 画面を切り替えたら先頭から表示する（前の画面のスクロール位置が残らないようにする） */
+function useScrollToTopOnNavigate() {
+  const { pathname } = useLocation()
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [pathname])
+}
 
 /**
  * 画面幅ごとのレイアウト
@@ -10,20 +20,33 @@ import { SideNav } from './SideNav'
  * - パソコン（1024px〜）：左側メニュー + 広い内容エリア
  */
 export function AppLayout() {
+  useScrollToTopOnNavigate()
+
   return (
     <div className="min-h-dvh">
       <header className="sticky top-0 z-30 border-b-[3px] border-ink bg-mikan-500">
-        <div className="mx-auto flex max-w-md items-center justify-between px-4 py-2 md:max-w-3xl lg:max-w-6xl lg:px-6 lg:py-3">
-          <Link to="/" className="font-pixel text-lg text-white [text-shadow:2px_2px_0_var(--color-ink)] lg:text-2xl">
+        <div className="mx-auto flex max-w-md items-center justify-between gap-2 px-4 py-2 md:max-w-3xl lg:max-w-6xl lg:px-6 lg:py-3">
+          <Link
+            to="/"
+            className="min-w-0 truncate font-pixel text-base text-white [text-shadow:2px_2px_0_var(--color-ink)] min-[400px]:text-lg lg:text-2xl"
+          >
             えひめウォーククエスト
           </Link>
-          <p className="hidden font-pixel text-white [text-shadow:1px_1px_0_var(--color-ink)] lg:block">
-            歩く楽しさが、健康と愛媛の未来をつくる。
-          </p>
+          <div className="flex shrink-0 items-center gap-4">
+            <p className="hidden font-pixel text-white [text-shadow:1px_1px_0_var(--color-ink)] lg:block">
+              歩く楽しさが、健康と愛媛の未来をつくる。
+            </p>
+            <CoinBadge />
+          </div>
         </div>
-        {api.mode === 'mock' && (
+        {api.mode === 'mock' && api.persistent && (
           <p role="status" className="bg-mikan-100 px-4 py-1.5 text-center text-sm font-bold text-mikan-800">
             モック動作中：データはこの端末だけに保存されます
+          </p>
+        )}
+        {!api.persistent && (
+          <p role="alert" className="bg-red-50 px-4 py-1.5 text-center text-sm font-bold text-red-800">
+            このブラウザではデータを保存できません。ページを再読み込みすると進行状況が消えます
           </p>
         )}
       </header>

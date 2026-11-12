@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import type { Rarity } from '../domain/types'
 
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
   return <section className={`rpg-card p-4 ${className}`}>{children}</section>
@@ -27,6 +28,31 @@ export function Badge({ children, tone = 'mikan' }: { children: ReactNode; tone?
     >
       {children}
     </span>
+  )
+}
+
+const RARITY_TONES: Record<Rarity, string> = {
+  N: 'bg-gray-100 text-gray-800 border-gray-500',
+  R: 'bg-seto-100 text-seto-700 border-seto-600',
+  SR: 'bg-mikan-100 text-mikan-800 border-mikan-600',
+  SSR: 'bg-yellow-100 text-yellow-900 border-yellow-600',
+}
+
+/** レア度の表示。色だけに頼らず、N / R / SR / SSR の文字も必ず出す */
+export function RarityBadge({ rarity }: { rarity: Rarity }) {
+  return (
+    <span className={`inline-flex shrink-0 items-center rounded-md border-2 px-1.5 font-pixel text-sm ${RARITY_TONES[rarity]}`}>
+      {rarity}
+    </span>
+  )
+}
+
+/** 操作（ガチャ・装備など）が失敗したときの表示 */
+export function ActionError({ message }: { message: string }) {
+  return (
+    <p role="alert" className="rounded-xl border-[3px] border-red-700 bg-red-50 px-3 py-2 font-bold text-red-800">
+      {message}
+    </p>
   )
 }
 

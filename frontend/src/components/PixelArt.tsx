@@ -49,13 +49,15 @@ interface PixelArtProps {
   style?: CSSProperties
   /** 読み上げ用の説明。省略すると装飾扱い（aria-hidden） */
   label?: string
+  /** 一部だけを拡大して表示するときの範囲（省略時は全体） */
+  viewBox?: { x: number; y: number; width: number; height: number }
 }
 
-export function PixelArt({ width, height, layers, className, style, label }: PixelArtProps) {
+export function PixelArt({ width, height, layers, className, style, label, viewBox }: PixelArtProps) {
   const runs = useMemo(() => layers.flatMap(toRuns), [layers])
   return (
     <svg
-      viewBox={`0 0 ${width} ${height}`}
+      viewBox={viewBox ? `${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}` : `0 0 ${width} ${height}`}
       shapeRendering="crispEdges"
       className={className}
       style={style}
