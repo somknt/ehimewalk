@@ -7,6 +7,7 @@ import { STARTER_BOTTOM_IDS, STARTER_EQUIPMENT, STARTER_TOP_IDS, getItem } from 
 import type { Appearance, Character } from '../domain/types'
 import { AppearanceFields } from '../features/character/AppearanceFields'
 import { CharacterAvatar } from '../features/character/CharacterAvatar'
+import { pedometer } from '../features/pedometer/pedometer'
 import { useAction } from '../hooks/useAction'
 import { useSession } from '../session/sessionContext'
 
@@ -73,6 +74,8 @@ export function WelcomePage() {
 
   const onSubmit = (event: FormEvent) => {
     event.preventDefault()
+    // ボタンを押したこの時点で、歩数の計測の許可を求めて計測を始める（iPhone はボタン操作の中でしか許可を求められない）
+    if (characterName.trim() && username.trim()) void pedometer.start()
     void submit.run()
   }
 

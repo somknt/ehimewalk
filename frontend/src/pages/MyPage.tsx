@@ -9,6 +9,7 @@ import { titleName } from '../domain/titles'
 import type { StepRecord, Visit } from '../domain/types'
 import { AppearanceFields } from '../features/character/AppearanceFields'
 import { CharacterAvatar } from '../features/character/CharacterAvatar'
+import { pedometer } from '../features/pedometer/pedometer'
 import { useAction } from '../hooks/useAction'
 import { useAsyncData } from '../hooks/useAsyncData'
 import { useSession } from '../session/sessionContext'
@@ -320,6 +321,7 @@ function ActivityCard({ activity }: { activity: ActivitySummary }) {
 function DangerZone() {
   const remove = useAction(async () => {
     await api.deleteAllData()
+    pedometer.resetForNewUser()
     // 保存データを消したので、最初の画面から読み込み直す
     window.location.assign(import.meta.env.BASE_URL)
   })

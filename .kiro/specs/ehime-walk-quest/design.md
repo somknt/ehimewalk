@@ -180,7 +180,7 @@ interface StepDataProvider {
 }
 ```
 
-- `DeviceMotionStepProvider`：端末の加速度センサー（devicemotion）で、アプリを開いて計測している間に数えた歩数を日付ごとに端末へ保存し、同期で返す。はじめは 0 歩。センサーの歩数は `pending`（検証待ち）とし、正式ランキングには入れない。デモ操作で足した歩数は `demoAddedSteps` として区別し `excluded` にする。
+- `DeviceMotionStepProvider`：端末の加速度センサー（devicemotion）で、アプリを開いて計測している間に数えた歩数を日付ごとに端末へ保存し、同期で返す。はじめは 0 歩。アプリを開くと自動で計測を始め（iPhone はセンサーの利用許可を求める）、利用者が止めたら次に「はじめる」を押すまで止めたままにする。アプリを閉じている間は数えられない（Web の制限。HealthKit / Health Connect 連携で対応）。センサーの歩数は `pending`（検証待ち）とし、正式ランキングには入れない。デモ操作で足した歩数は `demoAddedSteps` として区別し `excluded` にする。
 - 記録には `source` を必ず付け、サーバー側で `demo` を正式ランキングから除外する。
 
 ## 5. ゲーム規則
