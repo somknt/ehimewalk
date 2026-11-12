@@ -6,6 +6,7 @@ import { HomePage } from './pages/HomePage'
 import { MyPage } from './pages/MyPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { RankingPage } from './pages/RankingPage'
+import { WardrobePage } from './pages/WardrobePage'
 
 export default function App() {
   return (
@@ -14,6 +15,7 @@ export default function App() {
         <Route index element={<HomePage />} />
         <Route path="adventure" element={<AdventurePage />} />
         <Route path="gacha" element={<GachaPage />} />
+        <Route path="gacha/wardrobe" element={<WardrobePage />} />
         <Route path="ranking" element={<RankingPage />} />
         <Route path="mypage" element={<MyPage />} />
         <Route path="*" element={<NotFoundPage />} />

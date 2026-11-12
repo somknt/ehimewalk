@@ -1,6 +1,8 @@
 // アイテムのマスタデータ。フェーズ2 で DynamoDB（ewq-master）へ移す。
 // 実在のキャラクター・商標（例：みきゃん）は、利用許諾を確認するまで使わない。
 import type { PixelLayer } from '../components/PixelArt'
+import { validateDuplicateCoins, validatePool, type GachaRates } from '../domain/gacha'
+import { GACHA_COST } from '../domain/points'
 import type { EquipSlot, ItemAcquisitionType, Rarity } from '../domain/types'
 import {
   BOTTOM_OFFSET_Y,
@@ -36,6 +38,8 @@ const MIKAN = '#f39800'
 const MIKAN_LIGHT = '#ffd27a'
 const LEAF = '#4caf50'
 const STEM = '#6b4220'
+const GOLD = '#f2c14e'
+const GOLD_DARK = '#c99a2e'
 
 const items: ItemMaster[] = [
   // ---- 初期装備 ----
@@ -217,6 +221,52 @@ const items: ItemMaster[] = [
       },
     },
   },
+  {
+    itemId: 'top_golden_haori',
+    name: '黄金みかんの羽織',
+    category: 'top',
+    rarity: 'SSR',
+    acquisitionType: 'gacha',
+    description: 'きらきら輝く、伝説のみかん色の羽織。',
+    visual: {
+      kind: 'outfit',
+      front: outfitLayer(
+        ['...OOGGSSGGOO...', '..OGOGAGGAGOGO..', '..OGOGGAAGGOGO..', '..OgOGGGGGGOgO..', '....OggggggO....'],
+        TOP_OFFSET_Y,
+        { G: GOLD, g: GOLD_DARK, A: MIKAN },
+      ),
+      back: outfitLayer(
+        [
+          '..OOOOOOOOOOOO..',
+          '.OGGGGGGGGGGGGO.',
+          '.OGGGGGGGGGGGGO.',
+          '.OaaaaaaaaaaaaO.',
+          '.OaaaaaaaaaaaaO.',
+          '.OggggggggggggO.',
+          '.OggggggggggggO.',
+          '..OOOOOOOOOOOO..',
+        ],
+        TOP_OFFSET_Y,
+        { G: GOLD, a: MIKAN_LIGHT, g: GOLD_DARK },
+      ),
+    },
+  },
+  {
+    itemId: 'head_golden_crown',
+    name: '黄金みかんの冠',
+    category: 'head',
+    rarity: 'SSR',
+    acquisitionType: 'gacha',
+    description: 'みかんの王様だけがかぶれる冠。',
+    visual: {
+      kind: 'outfit',
+      front: outfitLayer(
+        ['.......LL.......', '...Y...AA...Y...', '...YO.OAAO.OY...', '...OYOYAAYOYO...', '...OYYYYYYYYO...', '...OOOOOOOOOO...'],
+        0,
+        { Y: GOLD, A: MIKAN, L: LEAF },
+      ),
+    },
+  },
 
   // ---- 地域限定（スポットのチェックインで獲得） ----
   {
@@ -302,7 +352,24 @@ export const RARITY_LABELS: Record<Rarity, string> = {
   N: 'ノーマル',
   R: 'レア',
   SR: 'スーパーレア',
+  SSR: 'ウルトラレア',
 }
 
-/** 通常ガチャの排出確率（仮設定。画面にもこの値を表示する） */
-export const NORMAL_GACHA_RATES: Record<Rarity, number> = { N: 0.7, R: 0.25, SR: 0.05 }
+/** 通常ガチャの排出確率（合計 1）。画面にもこの値を表示する */
+export const NORMAL_GACHA_RATES: GachaRates = { N: 0.6, R: 0.3, SR: 0.09, SSR: 0.01 }
+
+/**
+ * 持っているアイテムが出たときに変換するコイン（レア度別）。
+ * 仮の設定値。ゲームバランスを確認して調整する（ガチャ 1 回のコイン以下にする）
+ */
+export const GACHA_DUPLICATE_COINS: Record<Rarity, number> = { N: 5, R: 15, SR: 30, SSR: 50 }
+
+/** 通常ガチャの対象アイテム（初期衣装と地域限定は出ない） */
+export const NORMAL_GACHA_POOL: readonly ItemMaster[] = items.filter((item) => item.acquisitionType === 'gacha')
+
+/** ガチャの候補として使える形（domain/gacha の drawItem に渡す） */
+export const NORMAL_GACHA_CANDIDATES = NORMAL_GACHA_POOL.map((item) => ({ itemId: item.itemId, rarity: item.rarity }))
+
+// 確率の合計や、確率のあるレアリティに候補があるか、変換コインが正しいかを読み込み時に確かめる
+validatePool(NORMAL_GACHA_CANDIDATES, NORMAL_GACHA_RATES)
+validateDuplicateCoins(GACHA_DUPLICATE_COINS, GACHA_COST)

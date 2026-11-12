@@ -16,12 +16,18 @@ export interface DailySteps {
 
 export interface StepRecord extends DailySteps {
   source: StepSource
+  /** steps のうち、開発用のデモ操作で追加した歩数（実際の歩数と区別するため別に持つ） */
+  demoAddedSteps?: number
   /** 最後に同期した日時（ISO 8601） */
   syncTimestamp: string
   verification: StepVerification
 }
 
-export type PointReason = 'step_reward' | 'login_bonus' | 'gacha_draw' | 'admin_adjustment'
+/**
+ * gacha_refund：ガチャで持っているアイテムが出たときのコイン変換
+ * demo_grant：開発用のデモ操作で追加したコイン（開発モードのデータにだけ存在する）
+ */
+export type PointReason = 'step_reward' | 'login_bonus' | 'gacha_draw' | 'gacha_refund' | 'demo_grant' | 'admin_adjustment'
 
 export interface PointTransaction {
   transactionId: string
@@ -72,7 +78,7 @@ export interface UserProfile {
   createdAt: string
 }
 
-export type Rarity = 'N' | 'R' | 'SR'
+export type Rarity = 'N' | 'R' | 'SR' | 'SSR'
 export type ItemAcquisitionType = 'starter' | 'gacha' | 'spot' | 'login_bonus'
 
 export interface SourceRef {

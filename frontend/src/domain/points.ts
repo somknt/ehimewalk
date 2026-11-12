@@ -6,7 +6,7 @@ export const STEPS_PER_POINT = 100
 export const DAILY_STEP_CAP = 10_000
 /** 1 日の歩数ポイントの上限（= 100pt） */
 export const DAILY_STEP_POINT_CAP = DAILY_STEP_CAP / STEPS_PER_POINT
-/** ガチャ 1 回のポイント */
+/** ガチャ 1 回のコイン。重複時の変換コインは data/items.ts の GACHA_DUPLICATE_COINS */
 export const GACHA_COST = 50
 
 /** その日の歩数から得られる歩数ポイント（上限あり、端数切り捨て） */

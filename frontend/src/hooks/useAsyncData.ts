@@ -39,5 +39,20 @@ export function useAsyncData<T>(loader: () => Promise<T>) {
     setReloadKey((key) => key + 1)
   }, [])
 
-  return { state, reload }
+  /** 表示を「読み込み中」に戻さずに読み直す（操作の後に最新の値へ更新するとき） */
+  const refresh = useCallback(async () => {
+    try {
+      const data = await loader()
+      setState({ status: 'ready', data })
+    } catch (error) {
+      setState(toErrorState(error))
+    }
+  }, [loader])
+
+  /** 操作の結果を、読み込み直さずに画面へ反映する（読み込み済みのときだけ） */
+  const update = useCallback((updater: (data: T) => T) => {
+    setState((current) => (current.status === 'ready' ? { status: 'ready', data: updater(current.data) } : current))
+  }, [])
+
+  return { state, reload, refresh, update }
 }
