@@ -11,6 +11,7 @@ import { GachaResultCard, GachaReveal } from '../features/gacha/GachaResultView'
 import { GachaTabs } from '../features/gacha/GachaTabs'
 import { useAsyncData } from '../hooks/useAsyncData'
 import { balanceStore, useBalance } from '../hooks/useBalance'
+import { useSession } from '../session/sessionContext'
 
 async function loadGachaPage(): Promise<{ character: Character }> {
   return { character: await api.getCharacter() }
@@ -30,6 +31,8 @@ function toMessage(error: unknown, fallback: string): string {
 
 export function GachaPage() {
   const { state, reload, update } = useAsyncData(loadGachaPage)
+  // マイページの「ガチャの演出を短くする」設定（OS の「視差効果を減らす」と同じく演出を省く）
+  const { reduceGachaEffects } = useSession().session.profile
   // 所持コインはヘッダーと同じ共通の残高を使う（ガチャの結果は API から通知され、即座に反映される）
   const balanceState = useBalance()
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' })
@@ -69,7 +72,7 @@ export function GachaPage() {
     try {
       // 抽選結果は保存まで終わってから返ってくる。演出の途中で画面を閉じても結果は失われない
       const result = await api.drawGacha()
-      setPhase(prefersReducedMotion() ? { kind: 'result', result } : { kind: 'revealing', result })
+      setPhase(reduceGachaEffects || prefersReducedMotion() ? { kind: 'result', result } : { kind: 'revealing', result })
     } catch (e) {
       setError(toMessage(e, 'ガチャを引けませんでした。もう一度お試しください。'))
       setPhase({ kind: 'idle' })

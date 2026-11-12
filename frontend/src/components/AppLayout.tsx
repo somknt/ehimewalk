@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
-import { Link, Outlet, useLocation } from 'react-router'
+import { Link, Navigate, Outlet, useLocation } from 'react-router'
 import { api } from '../api'
+import { useSession } from '../session/sessionContext'
 import { BottomNav } from './BottomNav'
 import { CoinBadge } from './CoinBadge'
 import { SideNav } from './SideNav'
@@ -21,6 +22,10 @@ function useScrollToTopOnNavigate() {
  */
 export function AppLayout() {
   useScrollToTopOnNavigate()
+  const { session } = useSession()
+
+  // 初回はキャラクター作成から始める
+  if (!session.profile.onboarded) return <Navigate to="/welcome" replace />
 
   return (
     <div className="min-h-dvh">

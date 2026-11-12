@@ -20,6 +20,10 @@ export const SPOTS: readonly TouristSpot[] = [
     tags: ['歴史', '城', '絶景'],
     description:
       '松山市の中心部、標高132mの勝山の山頂に本丸を置く平山城です。江戸時代までに建てられた天守が今も残る全国12城（現存12天守）の一つです。',
+    guide: {
+      history: '加藤嘉明が勝山の山頂に城を築いたのが始まりで、「松山」という地名も嘉明の命名とされています。',
+      culture: '天守は親藩の松平家が建てたもので、現存12天守の中で唯一、瓦に「葵の御紋」が付いています。',
+    },
     rewardItemId: 'head_castle_kabuto',
     nearbySpotIds: ['dogo_onsen_honkan'],
     sources: [
@@ -28,6 +32,8 @@ export const SPOTS: readonly TouristSpot[] = [
         url: 'https://www.city.matsuyama.ehime.jp/kanko/kankoguide/shitestukoen/matsuyamajyo/sougouannnai.html',
       },
       { label: '松山城公式サイト「観覧ガイド」', url: 'https://www.matsuyamajo.jp/guide/' },
+      { label: '松山城公式サイト「天守」', url: 'https://www.matsuyamajo.jp/discover/tenshu.html' },
+      { label: 'nippon.com「日本100名城 愛媛県・松山城」', url: 'https://www.nippon.com/ja/guide-to-japan/castle00138081/' },
     ],
   },
   {
@@ -44,11 +50,17 @@ export const SPOTS: readonly TouristSpot[] = [
     tags: ['温泉', '歴史', '文化'],
     description:
       '日本最古といわれる道後温泉のシンボルです。明治27年に改築された建物で、平成6年に公衆浴場として初めて国の重要文化財に指定されました。',
+    guide: {
+      history:
+        '道後温泉は約3000年の歴史を持つといわれます。本館は平成31年1月から保存修理工事が行われ、令和6年12月に完了しました。',
+      culture: '夏目漱石の小説『坊っちゃん』に登場する温泉としても知られています。',
+    },
     rewardItemId: 'top_onsen_yukata',
     nearbySpotIds: ['matsuyama_castle'],
     sources: [
       { label: '道後温泉 公式サイト', url: 'https://dogo.jp/' },
       { label: '道後温泉 公式サイト「道後温泉本館」', url: 'https://dogo.jp/onsen/honkan' },
+      { label: 'nippon.com「入湯できる国重要文化財『道後温泉本館』」', url: 'https://www.nippon.com/ja/guide-to-japan/gu900285/' },
     ],
   },
   {
@@ -65,6 +77,10 @@ export const SPOTS: readonly TouristSpot[] = [
     tags: ['歴史', '城', '海'],
     description:
       '築城の名手・藤堂高虎が築いた海岸平城です。全国的にも珍しく、堀に海水を引き入れています。別名は吹揚城（ふきあげじょう）です。',
+    guide: {
+      history: '慶長7年（1602年）に藤堂高虎が築城に着手しました。平成19年には鉄御門（くろがねごもん）が再建されています。',
+      culture: '5層6階の天守は、展望台と展示室になっています。',
+    },
     rewardItemId: 'head_pirate_hat',
     nearbySpotIds: [],
     sources: [
@@ -77,3 +93,6 @@ export const SPOTS: readonly TouristSpot[] = [
 export function getSpot(spotId: string): TouristSpot | undefined {
   return SPOTS.find((spot) => spot.spotId === spotId)
 }
+
+/** AI クエストで選べる興味ジャンル（登録スポットのタグから作る） */
+export const QUEST_INTERESTS: readonly string[] = [...new Set(SPOTS.flatMap((spot) => spot.tags))]

@@ -73,10 +73,32 @@ export interface UserProfile {
   /** 都道府県コード（愛媛県 = 38） */
   selectedRegion: string
   ehimeRankingOptIn: boolean
+  /** 表示中の称号の ID（domain/titles.ts） */
+  titleId: string
+  /** 表示中の称号の名前（titleId から決まる。表示用） */
   title: string
   dailyGoal: number
+  /** キャラクター作成が済んでいるか */
+  onboarded: boolean
+  /** ガチャの演出を短くする */
+  reduceGachaEffects: boolean
   createdAt: string
 }
+
+/** 観光スポットへの訪問経路。AI 提案の効果を測るため、一覧からの訪問と区別する */
+export type VisitVia = 'ai_quest' | 'list'
+
+export interface Visit {
+  spotId: string
+  visitedAt: string
+  via: VisitVia
+  questId?: string
+  /** GPS で現地確認できた訪問か（デモ用チェックインは false） */
+  verified: boolean
+}
+
+/** 散策の負荷。歩く速さの想定に使う */
+export type WalkingLoad = 'easy' | 'normal' | 'active'
 
 export type Rarity = 'N' | 'R' | 'SR' | 'SSR'
 export type ItemAcquisitionType = 'starter' | 'gacha' | 'spot' | 'login_bonus'
@@ -104,6 +126,15 @@ export interface TouristSpot {
   kind: SpotKind
   tags: string[]
   description: string
+  /**
+   * AI 観光ガイドに渡す登録情報。情報源で確認できた内容だけを書き、無い項目は省略する
+   * （省略した項目は「登録情報がありません」と表示し、推測で埋めない）
+   */
+  guide: {
+    history?: string
+    culture?: string
+    specialties?: string
+  }
   rewardItemId: string
   nearbySpotIds: string[]
   sources: SourceRef[]

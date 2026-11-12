@@ -4,7 +4,15 @@ import { Badge, Card, CardTitle, ProgressBar } from '../../components/ui'
 import { getItem } from '../../data/items'
 
 /** クエストの進行状況（今日の歩数と、クエストの目安歩数の比較） */
-function QuestProgress({ quest, todaySteps }: { quest: QuestSuggestion; todaySteps: number }) {
+function QuestProgress({
+  quest,
+  todaySteps,
+  visitedSpotIds,
+}: {
+  quest: QuestSuggestion
+  todaySteps: number
+  visitedSpotIds: readonly string[]
+}) {
   const target = quest.estimate?.steps ?? null
   return (
     <div className="mt-3 rounded-xl border-2 border-ink/20 bg-white p-3">
@@ -23,14 +31,22 @@ function QuestProgress({ quest, todaySteps }: { quest: QuestSuggestion; todaySte
         <p className="mt-1 text-sm">今日の歩数：{todaySteps.toLocaleString('ja-JP')} 歩</p>
       )}
       <p className="mt-2 text-sm">
-        スポットの訪問：0 / {quest.spots.length} か所
-        <span className="ml-1 text-xs text-ink-soft">（訪問チェックはフェーズ3で対応）</span>
+        スポットの訪問：{quest.spots.filter((spot) => visitedSpotIds.includes(spot.spotId)).length} / {quest.spots.length} か所
       </p>
     </div>
   )
 }
 
-export function RecommendedQuestCard({ quest, todaySteps }: { quest: QuestSuggestion; todaySteps?: number }) {
+export function RecommendedQuestCard({
+  quest,
+  todaySteps,
+  visitedSpotIds = [],
+}: {
+  quest: QuestSuggestion
+  todaySteps?: number
+  /** 訪問済みのスポット（進行状況の表示に使う） */
+  visitedSpotIds?: readonly string[]
+}) {
   const { estimate } = quest
   return (
     <Card className="bg-seto-50">
@@ -86,7 +102,7 @@ export function RecommendedQuestCard({ quest, todaySteps }: { quest: QuestSugges
         <p className="mt-3 text-sm text-ink-soft">スポット周辺を散策するクエストです。歩数の目安はまだ計算していません。</p>
       )}
 
-      {todaySteps !== undefined && <QuestProgress quest={quest} todaySteps={todaySteps} />}
+      {todaySteps !== undefined && <QuestProgress quest={quest} todaySteps={todaySteps} visitedSpotIds={visitedSpotIds} />}
 
       <Link to="/adventure" className="rpg-button mt-4 w-full bg-seto-400 text-ink">
         冒険画面でスポットを見る

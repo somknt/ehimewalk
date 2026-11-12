@@ -53,6 +53,24 @@ const items: ItemMaster[] = [
     visual: { kind: 'outfit', front: outfitLayer(TOP_SHIRT_ROWS, TOP_OFFSET_Y, { T: '#4cc3d9', t: '#2a8fa3' }) },
   },
   {
+    itemId: 'top_leaf_tee',
+    name: 'もりのTシャツ',
+    category: 'top',
+    rarity: 'N',
+    acquisitionType: 'starter',
+    description: '石鎚の森みたいな、やさしい緑のTシャツ。',
+    visual: { kind: 'outfit', front: outfitLayer(TOP_SHIRT_ROWS, TOP_OFFSET_Y, { T: '#6cbf6f', t: '#3b8f3f' }) },
+  },
+  {
+    itemId: 'top_sunrise_tee',
+    name: 'あさやけTシャツ',
+    category: 'top',
+    rarity: 'N',
+    acquisitionType: 'starter',
+    description: '朝の散歩が気持ちよくなる、さくら色のTシャツ。',
+    visual: { kind: 'outfit', front: outfitLayer(TOP_SHIRT_ROWS, TOP_OFFSET_Y, { T: '#f6b3c6', t: '#d77a9b' }) },
+  },
+  {
     itemId: 'bottom_denim',
     name: 'デニムパンツ',
     category: 'bottom',
@@ -60,6 +78,18 @@ const items: ItemMaster[] = [
     acquisitionType: 'starter',
     description: '歩きやすいデニム。',
     visual: { kind: 'outfit', front: outfitLayer(BOTTOM_PANTS_ROWS, BOTTOM_OFFSET_Y, { B: '#3a5a8c' }) },
+  },
+  {
+    itemId: 'bottom_navy_skirt',
+    name: 'ネイビースカート',
+    category: 'bottom',
+    rarity: 'N',
+    acquisitionType: 'starter',
+    description: '動きやすい、紺色のスカート。',
+    visual: {
+      kind: 'outfit',
+      front: outfitLayer(BOTTOM_SKIRT_ROWS, BOTTOM_OFFSET_Y, { B: '#2f4a7a', b: '#22375c' }),
+    },
   },
   {
     itemId: 'shoes_travel_boots',
@@ -112,6 +142,47 @@ const items: ItemMaster[] = [
     visual: {
       kind: 'outfit',
       front: outfitLayer(BOTTOM_SKIRT_ROWS, BOTTOM_OFFSET_Y, { B: '#4cc3d9', b: '#2a8fa3' }),
+    },
+  },
+  {
+    itemId: 'bottom_khaki_pants',
+    name: 'カーキのパンツ',
+    category: 'bottom',
+    rarity: 'N',
+    acquisitionType: 'gacha',
+    description: 'どんな服にも合わせやすいパンツ。',
+    visual: { kind: 'outfit', front: outfitLayer(BOTTOM_PANTS_ROWS, BOTTOM_OFFSET_Y, { B: '#9a8a5a' }) },
+  },
+  {
+    itemId: 'shoes_white_sneakers',
+    name: 'しろいスニーカー',
+    category: 'shoes',
+    rarity: 'N',
+    acquisitionType: 'gacha',
+    description: 'まっしろで軽いスニーカー。',
+    visual: { kind: 'outfit', front: outfitLayer(SHOES_ROWS, SHOES_OFFSET_Y, { K: '#f5f0e6' }) },
+  },
+  {
+    itemId: 'head_straw_hat',
+    name: '麦わら帽子',
+    category: 'head',
+    rarity: 'N',
+    acquisitionType: 'gacha',
+    description: '夏の島めぐりにぴったり。',
+    visual: {
+      kind: 'outfit',
+      front: outfitLayer(
+        [
+          '.....OOOOOO.....',
+          '....OYYYYYYO....',
+          '....OYYYYYYO....',
+          '...ORRRRRRRRO...',
+          'OYYYYYYYYYYYYYYO',
+          '.OOOOOOOOOOOOOO.',
+        ],
+        1,
+        { Y: '#e9c46a', R: '#c0504d' },
+      ),
     },
   },
   {
@@ -174,6 +245,18 @@ const items: ItemMaster[] = [
         'radial-gradient(circle at 86% 86%, #f39800 0 5px, transparent 6px)',
         'linear-gradient(180deg, #fff3d6 0%, #fff3d6 55%, #86c988 55%, #4caf50 100%)',
       ].join(', '),
+    },
+  },
+  {
+    itemId: 'bg_seto_sunset',
+    name: '瀬戸内の夕焼け',
+    category: 'background',
+    rarity: 'R',
+    acquisitionType: 'gacha',
+    description: '島々の向こうに沈む夕日。',
+    visual: {
+      kind: 'background',
+      css: 'linear-gradient(180deg, #ffd27a 0%, #f9a61f 35%, #e8730c 58%, #6b4a7a 58%, #3b3f6b 100%)',
     },
   },
   {
@@ -347,6 +430,10 @@ export const STARTER_EQUIPMENT: Partial<Record<EquipSlot, string>> = {
   shoes: 'shoes_travel_boots',
   background: 'bg_seto_sea',
 }
+
+/** キャラクター作成で選べる初期衣装 */
+export const STARTER_TOP_IDS = ['top_adventure_tee', 'top_leaf_tee', 'top_sunrise_tee'] as const
+export const STARTER_BOTTOM_IDS = ['bottom_denim', 'bottom_navy_skirt'] as const
 
 export const RARITY_LABELS: Record<Rarity, string> = {
   N: 'ノーマル',
