@@ -199,7 +199,7 @@ export function GachaPage() {
             </ul>
           </Card>
 
-          <ComingSoon items={[{ label: 'アイテム図鑑', task: 'フェーズ3' }]} />
+          <ComingSoon items={[{ label: 'アイテム図鑑（未所持アイテムの一覧）', task: 'タスク 1.10' }]} />
         </div>
       </div>
     </Shell>

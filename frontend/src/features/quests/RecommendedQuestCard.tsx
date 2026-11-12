@@ -1,9 +1,36 @@
 import { Link } from 'react-router'
 import type { QuestSuggestion } from '../../api'
-import { Badge, Card, CardTitle } from '../../components/ui'
+import { Badge, Card, CardTitle, ProgressBar } from '../../components/ui'
 import { getItem } from '../../data/items'
 
-export function RecommendedQuestCard({ quest }: { quest: QuestSuggestion }) {
+/** クエストの進行状況（今日の歩数と、クエストの目安歩数の比較） */
+function QuestProgress({ quest, todaySteps }: { quest: QuestSuggestion; todaySteps: number }) {
+  const target = quest.estimate?.steps ?? null
+  return (
+    <div className="mt-3 rounded-xl border-2 border-ink/20 bg-white p-3">
+      <p className="font-bold">進行状況</p>
+      {target ? (
+        <>
+          <div className="mt-1 mb-1 flex justify-between text-sm">
+            <span>今日の歩数／クエストの目安</span>
+            <span className="font-bold">
+              {todaySteps.toLocaleString('ja-JP')} / {target.toLocaleString('ja-JP')} 歩
+            </span>
+          </div>
+          <ProgressBar value={todaySteps / target} label="クエストの目安歩数に対する今日の歩数" />
+        </>
+      ) : (
+        <p className="mt-1 text-sm">今日の歩数：{todaySteps.toLocaleString('ja-JP')} 歩</p>
+      )}
+      <p className="mt-2 text-sm">
+        スポットの訪問：0 / {quest.spots.length} か所
+        <span className="ml-1 text-xs text-ink-soft">（訪問チェックはフェーズ3で対応）</span>
+      </p>
+    </div>
+  )
+}
+
+export function RecommendedQuestCard({ quest, todaySteps }: { quest: QuestSuggestion; todaySteps?: number }) {
   const { estimate } = quest
   return (
     <Card className="bg-seto-50">
@@ -58,6 +85,8 @@ export function RecommendedQuestCard({ quest }: { quest: QuestSuggestion }) {
       ) : (
         <p className="mt-3 text-sm text-ink-soft">スポット周辺を散策するクエストです。歩数の目安はまだ計算していません。</p>
       )}
+
+      {todaySteps !== undefined && <QuestProgress quest={quest} todaySteps={todaySteps} />}
 
       <Link to="/adventure" className="rpg-button mt-4 w-full bg-seto-400 text-ink">
         冒険画面でスポットを見る

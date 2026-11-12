@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router'
 import { SwipePager } from '../components/SwipePager'
 import { ErrorMessage, LoadingCards } from '../components/ui'
@@ -11,15 +12,25 @@ import { useHomeData } from '../hooks/useHomeData'
 /**
  * ホームは 2 ページ構成（左右スワイプ・下部のインジケーターで切り替え）。
  * 1 ページ目：キャラクター・今日の歩数・所持コイン・ガチャと着せ替えへの近道
- * 2 ページ目：おすすめクエスト・健康ダッシュボード（週間・月間・グラフ・距離・カロリー）
+ * 2 ページ目：おすすめクエストと進行状況・健康ダッシュボード（週間・月間・グラフ・距離・カロリー）
  */
 export function HomePage() {
   const { state, reload, refresh } = useHomeData()
+  const [refreshing, setRefreshing] = useState(false)
 
   if (state.status === 'loading') return <LoadingCards count={4} />
   if (state.status === 'error') return <ErrorMessage message={state.message} onRetry={reload} />
 
   const { profile, character, steps, todayDemoAddedSteps, balance, quest, lastSync } = state.data
+
+  const updateSteps = async () => {
+    setRefreshing(true)
+    try {
+      await refresh()
+    } finally {
+      setRefreshing(false)
+    }
+  }
 
   const mainPage = (
     // 幅 768px 以上では 2 列に並べる
@@ -37,8 +48,13 @@ export function HomePage() {
           syncedAt={lastSync.syncedAt}
           demoAddedSteps={todayDemoAddedSteps}
         />
-        <button type="button" onClick={() => void refresh()} className="rpg-button w-full bg-white">
-          歩数を更新する
+        <button
+          type="button"
+          onClick={() => void updateSteps()}
+          disabled={refreshing}
+          className="rpg-button w-full bg-white disabled:opacity-60"
+        >
+          {refreshing ? '歩数を更新しています…' : '歩数を更新する'}
         </button>
         <PointsCard balance={balance} awardedNow={lastSync.awardedPoints} />
         <DemoToolsCard onStepsChanged={() => void refresh()} />
@@ -48,7 +64,7 @@ export function HomePage() {
 
   const healthPage = (
     <div className="grid gap-4 md:grid-cols-2 md:items-start lg:gap-6">
-      <RecommendedQuestCard quest={quest} />
+      <RecommendedQuestCard quest={quest} todaySteps={steps.todaySteps} />
       <HealthDashboard steps={steps} />
     </div>
   )
