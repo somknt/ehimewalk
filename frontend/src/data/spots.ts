@@ -88,7 +88,79 @@ export const SPOTS: readonly TouristSpot[] = [
       { label: '今治市 観光スポット「今治城」', url: 'https://www.city.imabari.ehime.jp/kanko/spot/?a=106' },
     ],
   },
+  {
+    spotId: 'shimonada_station',
+    name: '下灘駅',
+    prefectureCode: EHIME_PREFECTURE_CODE,
+    municipalityCode: '38210',
+    municipality: '伊予市',
+    address: '愛媛県伊予市双海町大久保',
+    // 座標は公開資料からの概略値（docs/evidence.md）。現地での確認は未実施
+    latitude: 33.65523,
+    longitude: 132.58933,
+    checkinRadiusM: 100,
+    kind: 'landmark',
+    tags: ['絶景', '海'],
+    description:
+      'JR予讃線の無人駅で、プラットホームから伊予灘の海が見えます。夕日の撮影スポットとして知られ、青春18きっぷのポスターにも何度も取り上げられています。',
+    guide: {
+      culture: '毎年9月には、夕日を背景にした「夕焼けプラットホームコンサート」が開かれています。',
+    },
+    rewardItemId: 'accessory_sunset_mantle',
+    nearbySpotIds: [],
+    sources: [
+      { label: '伊予市「JR下灘駅」', url: 'https://www.city.iyo.lg.jp/machizukuri/kanko/guidemap/jrshimonada.html' },
+      { label: 'いよ観ネット「JR下灘駅」', url: 'https://www.iyokannet.jp/spot/3580' },
+    ],
+  },
+  {
+    spotId: 'uwajima_castle',
+    name: '宇和島城',
+    prefectureCode: EHIME_PREFECTURE_CODE,
+    municipalityCode: '38203',
+    municipality: '宇和島市',
+    address: '愛媛県宇和島市丸之内1',
+    // 座標は公開資料からの天守付近の概略値（docs/evidence.md）。現地での確認は未実施
+    latitude: 33.21948,
+    longitude: 132.56524,
+    checkinRadiusM: 150,
+    kind: 'landmark',
+    tags: ['歴史', '城', '絶景'],
+    description:
+      '藤堂高虎が築き、伊達家の2代宗利が大改修した城です。三重三階の天守は国の重要文化財で、現存12天守の一つです。',
+    guide: {
+      history: '天守が今の形に建て替えられたのは、伊達宗利が城を大改修した寛文年間（1661〜72年）です。',
+      culture: '天守の3階からは宇和島湾を眺められます。',
+    },
+    rewardItemId: 'top_samurai_armor',
+    nearbySpotIds: [],
+    sources: [
+      { label: '宇和島市「国指定 宇和島城天守」', url: 'https://www.city.uwajima.ehime.jp/site/sizen-bunka/1tensyu.html' },
+      { label: '愛媛県「えひめの文化財」', url: 'https://www.pref.ehime.jp/ehimenotakara/16.html' },
+    ],
+  },
 ]
+
+/**
+ * スポットデータの版。AI クエストのキャッシュのキーに含め、スポットを追加・修正したら上げる
+ * （古いデータで作った提案を使い回さないため）
+ */
+export const SPOT_DATA_VERSION = '2026-11-12.1'
+
+/** AI 散策クエストで選べるジャンル。tags は、そのジャンルに合うスポットのタグ（空はすべてのスポット） */
+export const QUEST_GENRES = [
+  { id: 'sightseeing', label: '観光', tags: [] },
+  { id: 'history', label: '歴史', tags: ['歴史', '城'] },
+  { id: 'nature', label: '自然', tags: ['絶景', '海', '自然'] },
+  { id: 'gourmet', label: 'グルメ', tags: ['グルメ', '特産品'] },
+  { id: 'any', label: 'おまかせ', tags: [] },
+] as const satisfies readonly { id: string; label: string; tags: readonly string[] }[]
+
+export type QuestGenreId = (typeof QUEST_GENRES)[number]['id']
+
+export function getQuestGenre(id: string) {
+  return QUEST_GENRES.find((genre) => genre.id === id)
+}
 
 export function getSpot(spotId: string): TouristSpot | undefined {
   return SPOTS.find((spot) => spot.spotId === spotId)

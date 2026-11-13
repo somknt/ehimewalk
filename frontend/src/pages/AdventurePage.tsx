@@ -6,6 +6,8 @@ import { Badge, Card, ErrorMessage, LoadingCards, PageTitle } from '../component
 import { getItem } from '../data/items'
 import { SPOTS } from '../data/spots'
 import type { Visit } from '../domain/types'
+import { AI_QUEST_API_AVAILABLE } from '../api/aiQuestClient'
+import { AiQuestPlanner } from '../features/quests/AiQuestPlanner'
 import { QuestPlanner } from '../features/quests/QuestPlanner'
 import { AdventureZukan } from '../features/zukan/AdventureZukan'
 import { useAsyncData } from '../hooks/useAsyncData'
@@ -66,7 +68,8 @@ export function AdventurePage() {
     <div className="space-y-4">
       <PageTitle lead="愛媛の観光スポットを歩いてめぐろう。訪れると限定アイテムがもらえます。">冒険</PageTitle>
       <Tabs label="冒険の切り替え" tabs={TABS} active={tab} onChange={(id) => setParams({ tab: id }, { replace: true })}>
-        {tab === 'quest' && <QuestPlanner />}
+        {/* AI の API（backend）がある環境では Bedrock 経由の提案、ない公開版では従来のブラウザ内モック */}
+        {tab === 'quest' && (AI_QUEST_API_AVAILABLE ? <AiQuestPlanner /> : <QuestPlanner />)}
         {tab !== 'quest' && state.status === 'loading' && <LoadingCards count={2} />}
         {tab !== 'quest' && state.status === 'error' && <ErrorMessage message={state.message} onRetry={reload} />}
         {tab === 'spots' && state.status === 'ready' && <SpotList visits={state.data} />}
