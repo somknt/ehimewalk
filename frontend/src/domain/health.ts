@@ -2,7 +2,7 @@
 
 export const DEFAULT_STRIDE_M = 0.7
 export const DEFAULT_WEIGHT_KG = 60
-/** 普通歩行（時速 4km）の METs。出典は docs/evidence.md（原典の数値は要確認） */
+/** 普通歩行（平地・時速 4km）の METs。出典：厚生労働省 e-ヘルスネット「生活活動のメッツ表」（docs/evidence.md） */
 export const WALKING_METS = 3.0
 export const WALKING_SPEED_KMH = 4.0
 

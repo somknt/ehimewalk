@@ -1275,6 +1275,62 @@ export class MockGameApi implements GameApi {
         }),
 
       getHistory: (limit = 10) => this.simulateNetwork(() => this.loadDb().demoHistory.slice(0, limit)),
+
+      prepareShowcase: () =>
+        this.simulateNetwork(() => {
+          const provider = this.stepProvider()
+          if (!DEMO_BOOSTABLE_SOURCES.includes(provider.source)) {
+            throw new ApiError('実際の歩数データがある環境では、デモ用データを作れません。', { code: 'demo_unavailable' })
+          }
+          const now = this.now()
+          const createdAt = now.toISOString()
+          const today = toJstDateKey(now)
+          const windowStart = addDays(today, -(SYNC_WINDOW_DAYS - 1))
+          // いまのデータは消して、作り直す（センサーの歩数も消す）
+          provider.clear?.()
+          const db = createInitialDb(now)
+          db.profile = { ...db.profile, username: SHOWCASE.username, onboarded: true }
+          db.character = {
+            name: SHOWCASE.characterName,
+            appearance: { ...SHOWCASE.appearance },
+            equipped: { ...STARTER_EQUIPMENT, ...SHOWCASE.equipped },
+          }
+          for (const itemId of SHOWCASE.items) db.inventory[itemId] = { acquiredAt: createdAt }
+          // 過去 7 日分の歩数は「デモ操作で追加した歩数」として入れる（正式ランキングには入らない）
+          dateRange(windowStart, today).forEach((date, i) => {
+            db.demoStepBoosts[date] = SHOWCASE.steps[i % SHOWCASE.steps.length]
+          })
+          const { awardedPoints } = this.applySteps(db, [], { from: windowStart, today, windowStart }, provider.source, createdAt)
+          addTransaction(db, SHOWCASE.coins, 'demo_grant', createdAt)
+          addDemoHistory(db, { kind: 'coins', amount: SHOWCASE.coins, awardedCoins: SHOWCASE.coins, createdAt })
+          addDemoHistory(db, {
+            kind: 'steps',
+            amount: SHOWCASE.steps.reduce((sum, s) => sum + s, 0),
+            awardedCoins: awardedPoints,
+            createdAt,
+          })
+          db.visits[SHOWCASE.visitedSpotId] = {
+            spotId: SHOWCASE.visitedSpotId,
+            visitedAt: addDays(today, -2) + 'T01:00:00.000Z',
+            via: 'list',
+            verified: false,
+          }
+          db.inventory[getSpot(SHOWCASE.visitedSpotId)!.rewardItemId] = { acquiredAt: createdAt }
+          db.activeDates = dateRange(windowStart, today)
+          this.commit(db, true)
+        }),
     }
   }
 }
+
+/** 発表用のデモ用データ（途中まで遊んだ状態）。歩数は過去 7 日分（古い順） */
+const SHOWCASE = {
+  username: 'デモユーザー',
+  characterName: 'ミカン',
+  appearance: { hairStyle: 'bob', hairColor: 'mikan', skinTone: 'light', eyeColor: 'brown' } satisfies Appearance,
+  equipped: { head: 'head_mikan_hat', pet: 'pet_koromikan', bottom: 'bottom_seto_skirt' } satisfies Partial<Record<EquipSlot, string>>,
+  items: ['head_mikan_hat', 'pet_koromikan', 'bottom_seto_skirt', 'top_traveler', 'accessory_mikan_pendant', 'bg_mikan_field'],
+  steps: [5200, 7400, 6100, 9300, 4800, 8200, 3500],
+  coins: 300,
+  visitedSpotId: 'dogo_onsen_honkan',
+} as const

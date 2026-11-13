@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { api } from '../api'
 import { Tabs } from '../components/Tabs'
@@ -9,8 +10,12 @@ import { QuestPlanner } from '../features/quests/QuestPlanner'
 import { AdventureZukan } from '../features/zukan/AdventureZukan'
 import { useAsyncData } from '../hooks/useAsyncData'
 
+// 地図のライブラリは大きいため、マップのタブを開いたときにだけ読み込む
+const SpotMap = lazy(() => import('../features/map/SpotMap').then((m) => ({ default: m.SpotMap })))
+
 const TABS = [
   { id: 'spots', label: 'スポット' },
+  { id: 'map', label: 'マップ' },
   { id: 'quest', label: 'AIクエスト' },
   { id: 'zukan', label: '図鑑' },
 ] as const
@@ -66,8 +71,12 @@ export function AdventurePage() {
         {tab !== 'quest' && state.status === 'error' && <ErrorMessage message={state.message} onRetry={reload} />}
         {tab === 'spots' && state.status === 'ready' && <SpotList visits={state.data} />}
         {tab === 'zukan' && state.status === 'ready' && <AdventureZukan visits={state.data} />}
+        {tab === 'map' && state.status === 'ready' && (
+          <Suspense fallback={<LoadingCards count={1} />}>
+            <SpotMap visits={state.data} />
+          </Suspense>
+        )}
       </Tabs>
-      <p className="text-sm text-ink-soft">観光マップは、利用規約に合う地図サービスを決めてから追加します。</p>
     </div>
   )
 }

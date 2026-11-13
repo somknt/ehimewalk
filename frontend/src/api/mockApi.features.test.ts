@@ -282,3 +282,28 @@ describe('保存データの移行', () => {
     ])
   })
 })
+
+describe('発表用のデモ用データ', () => {
+  it('途中まで遊んだ状態になり、正式ランキングには入らない', async () => {
+    const api = createApi()
+    await api.completeOnboarding(onboarding)
+    await api.claimLoginBonus()
+    await api.demo!.prepareShowcase()
+
+    const session = await api.getSession()
+    expect(session.profile).toMatchObject({ onboarded: true, username: 'デモユーザー' })
+    expect(session.character.equipped).toMatchObject({ head: 'head_mikan_hat', pet: 'pet_koromikan' })
+    const records = await api.getStepRecords('2026-11-05', TODAY)
+    expect(records).toHaveLength(7)
+    expect(records.every((r) => r.verification === 'excluded')).toBe(true)
+    // 歩数 44,500 歩 → 445 コイン ＋ 300 コイン。前のログインボーナスは消えている
+    const balance = await api.getPointBalance()
+    expect(balance.balance).toBe(445 + 300)
+    expect(balance.loginBonusClaimedToday).toBe(false)
+    expect((await api.getVisits()).map((v) => v.spotId)).toEqual(['dogo_onsen_honkan'])
+    expect((await api.getRanking('all')).me.excludedReason).toBe('demo_data')
+    // もう一度同期しても、コインは二重付与されない
+    await api.syncSteps()
+    expect((await api.getPointBalance()).balance).toBe(745)
+  })
+})

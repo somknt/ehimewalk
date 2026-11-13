@@ -9,6 +9,7 @@ import { titleName } from '../domain/titles'
 import type { StepRecord, Visit } from '../domain/types'
 import { AppearanceFields } from '../features/character/AppearanceFields'
 import { CharacterAvatar } from '../features/character/CharacterAvatar'
+import { ShowcaseCard } from '../features/demo/ShowcaseCard'
 import { pedometer } from '../features/pedometer/pedometer'
 import { useAction } from '../hooks/useAction'
 import { useAsyncData } from '../hooks/useAsyncData'
@@ -384,6 +385,7 @@ export function MyPage() {
               <VisitHistoryCard visits={state.data.visits} />
             </>
           )}
+          <ShowcaseCard />
           <DangerZone />
         </div>
       </div>

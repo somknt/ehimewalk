@@ -110,6 +110,11 @@ export interface DemoTools {
   /** 今日の歩数を増やし、通常の規則（100 歩 = 1 コイン、上限なし）でコインを付与する */
   addSteps(steps: DemoStepAmount): Promise<{ todaySteps: number; awardedPoints: number; balance: PointBalance }>
   getHistory(limit?: number): Promise<DemoHistoryEntry[]>
+  /**
+   * 発表用：いまのデータを消して、途中まで遊んだ状態（キャラクター作成済み・過去 7 日分の歩数・
+   * コイン・アイテム・訪問済みスポット 1 か所）にする
+   */
+  prepareShowcase(): Promise<void>
 }
 
 export interface InventoryItem {

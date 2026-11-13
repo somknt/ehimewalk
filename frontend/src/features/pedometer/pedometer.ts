@@ -43,6 +43,11 @@ const NO_SENSOR_TIMEOUT_MS = 3000
 /** 許可を求めずに試したとき、値が届かなければ「許可が必要」と判断するまでの時間 */
 const SILENT_TRY_TIMEOUT_MS = 1500
 
+/** スマートフォン・タブレット（指で操作する端末）か */
+function isTouchDevice(): boolean {
+  return typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0
+}
+
 function readAutoStart(): boolean {
   try {
     return globalThis.localStorage?.getItem(AUTO_START_KEY) !== 'off'
@@ -106,7 +111,8 @@ class Pedometer {
       this.set({ status: 'unsupported' })
       return
     }
-    const needsPermission = typeof this.permissionApi().requestPermission === 'function'
+    // 許可の仕組みがあってもセンサーが無い端末（パソコンの Chrome など）では、許可のお知らせを出さない
+    const needsPermission = typeof this.permissionApi().requestPermission === 'function' && isTouchDevice()
     this.beginListening(needsPermission ? SILENT_TRY_TIMEOUT_MS : NO_SENSOR_TIMEOUT_MS, needsPermission ? 'needs_permission' : 'unsupported')
   }
 
