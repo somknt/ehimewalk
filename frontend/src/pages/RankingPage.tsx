@@ -1,11 +1,11 @@
 import { useCallback, useState } from 'react'
 import { Link } from 'react-router'
-import { api, type CheerReaction, type RankingEntry, type RankingResult, type RankingScope } from '../api'
+import { api, type RankingEntry, type RankingResult, type RankingScope } from '../api'
 import { Tabs } from '../components/Tabs'
 import { Badge, Card, ErrorMessage, LoadingCards, PageTitle } from '../components/ui'
 import { formatMonthDay } from '../domain/date'
 import { CharacterAvatar } from '../features/character/CharacterAvatar'
-import { useAction } from '../hooks/useAction'
+import { CheerButtons } from '../features/friends/CheerButtons'
 import { useAsyncData } from '../hooks/useAsyncData'
 
 const TABS: { id: RankingScope; label: string }[] = [
@@ -20,41 +20,10 @@ const DESCRIPTIONS: Record<RankingScope, string> = {
   friends: 'フレンド登録した人どうしのランキングです。',
 }
 
-const CHEERS: { id: CheerReaction; label: string }[] = [
-  { id: 'nice', label: '👏 ナイス' },
-  { id: 'fight', label: '💪 ファイト' },
-  { id: 'thanks', label: '🙌 いっしょに歩こう' },
-]
-
 const RANK_STYLES: Record<number, string> = {
   1: 'bg-mikan-400 text-white',
   2: 'bg-gray-300 text-ink',
   3: 'bg-[#d39a6a] text-white',
-}
-
-function CheerButtons({ userId }: { userId: string }) {
-  const [sent, setSent] = useState<CheerReaction | null>(null)
-  const send = useAction(async (reaction: CheerReaction) => {
-    await api.sendCheer(userId, reaction)
-    setSent(reaction)
-  })
-  if (sent) return <p className="text-sm font-bold text-leaf-700">応援を送りました</p>
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {CHEERS.map((cheer) => (
-        <button
-          key={cheer.id}
-          type="button"
-          onClick={() => void send.run(cheer.id)}
-          disabled={send.pending}
-          className="min-h-10 rounded-full border-2 border-ink bg-white px-3 text-sm"
-        >
-          {cheer.label}
-        </button>
-      ))}
-      {send.error && <p className="text-sm text-red-700">{send.error}</p>}
-    </div>
-  )
 }
 
 function RankingRow({ entry, showCheer }: { entry: RankingEntry; showCheer: boolean }) {
@@ -109,8 +78,10 @@ function MyStatus({ result }: { result: RankingResult }) {
         </p>
       ) : (
         <p className="mt-1 text-sm">
-          デモデータの歩数のため、正式な順位には入りません（参考：<span className="font-bold">{me.referenceRank}位</span>相当）。
-          スマートフォンの歩数と連携すると参加できます。
+          {me.excludedReason === 'demo_data'
+            ? 'デモ操作で追加した歩数を含むため、正式な順位には入りません'
+            : '端末のセンサーで数えた歩数は、不正防止の確認ができるまで正式な順位には入りません'}
+          （参考：<span className="font-bold">{me.referenceRank}位</span>相当）。
         </p>
       )}
     </Card>
@@ -139,7 +110,16 @@ export function RankingPage() {
                 <Badge tone="gray">サンプル表示</Badge>
               </div>
               {state.data.entries.length === 0 ? (
-                <p className="text-ink-soft">まだランキングに参加している人がいません。</p>
+                scope === 'friends' ? (
+                  <div>
+                    <p className="text-ink-soft">まだフレンドがいません。フレンドコードで友だちを追加しよう！</p>
+                    <Link to="/friends" className="rpg-button mt-3 w-full bg-seto-400">
+                      フレンドを追加する
+                    </Link>
+                  </div>
+                ) : (
+                  <p className="text-ink-soft">まだランキングに参加している人がいません。</p>
+                )
               ) : (
                 <ol className="space-y-2">
                   {state.data.entries.map((entry) => (

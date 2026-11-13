@@ -8,11 +8,11 @@ const formatTime = (iso: string) =>
   )
 
 /**
- * 開発用のデモ操作（コイン・歩数の追加）。
- * 開発モードのモック API でだけ表示し、本番ビルドでは api.demo が null になるため何も出ない。
+ * 発表・動作確認用のデモ操作（コイン・歩数の追加）。
+ * モック API（端末内で動く版）でだけ表示する。本番の API では api.demo が null になるため何も出ない。
  */
 export function DemoToolsCard({ onStepsChanged }: { onStepsChanged?: () => void }) {
-  const demo = import.meta.env.DEV ? api.demo : null
+  const demo = api.demo
   if (!demo) return null
   return <DemoToolsPanel demo={demo} onStepsChanged={onStepsChanged} />
 }
@@ -50,8 +50,10 @@ function DemoToolsPanel({ demo, onStepsChanged }: { demo: DemoTools; onStepsChan
 
   return (
     <Card className="border-dashed bg-seto-50">
-      <CardTitle aside={<Badge tone="seto">開発モードのみ</Badge>}>デモ操作</CardTitle>
-      <p className="text-sm text-ink-soft">動作確認用です。本番環境では表示されず、操作もできません。</p>
+      <CardTitle aside={<Badge tone="seto">デモ用</Badge>}>デモ操作</CardTitle>
+      <p className="text-sm text-ink-soft">
+        発表や動作確認のための操作です。ここで追加した歩数は「デモ操作で追加」として区別して記録し、正式ランキングには入りません。
+      </p>
 
       <p className="mt-3 text-sm font-bold">コインを追加</p>
       <div className="mt-1 grid grid-cols-3 gap-2">
@@ -73,8 +75,8 @@ function DemoToolsPanel({ demo, onStepsChanged }: { demo: DemoTools; onStepsChan
         ))}
       </div>
 
-      <p className="mt-3 text-sm font-bold">今日の歩数を追加（100歩 = 1コイン、1日100コインまで）</p>
-      <div className="mt-1 grid grid-cols-3 gap-2">
+      <p className="mt-3 text-sm font-bold">今日の歩数を追加（100歩 = 1コイン）</p>
+      <div className="mt-1 grid grid-cols-2 gap-2">
         {DEMO_STEP_AMOUNTS.map((steps) => (
           <button
             key={steps}

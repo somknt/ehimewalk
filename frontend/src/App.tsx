@@ -1,6 +1,7 @@
 import { Route, Routes } from 'react-router'
 import { AppLayout } from './components/AppLayout'
 import { AdventurePage } from './pages/AdventurePage'
+import { FriendsPage } from './pages/FriendsPage'
 import { GachaPage } from './pages/GachaPage'
 import { HomePage } from './pages/HomePage'
 import { MyPage } from './pages/MyPage'
@@ -23,6 +24,7 @@ export default function App() {
           <Route path="adventure/spots/:spotId" element={<SpotDetailPage />} />
           <Route path="gacha" element={<GachaPage />} />
           <Route path="gacha/wardrobe" element={<WardrobePage />} />
+          <Route path="friends" element={<FriendsPage />} />
           <Route path="ranking" element={<RankingPage />} />
           <Route path="mypage" element={<MyPage />} />
           <Route path="*" element={<NotFoundPage />} />

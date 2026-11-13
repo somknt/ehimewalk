@@ -46,7 +46,10 @@ export function Tabs<T extends string>({ label, tabs, active, onChange, children
               tabIndex={selected ? 0 : -1}
               onClick={() => onChange(tab.id)}
               onKeyDown={onKeyDown}
-              className={`min-h-12 rounded-xl border-[3px] border-ink px-1 font-bold ${
+              // タブが 4 つ以上のときは、幅 360px の端末でも 1 行に収まるよう文字を小さくする
+              className={`min-h-12 rounded-xl border-[3px] border-ink px-1 leading-tight font-bold ${
+                tabs.length >= 4 ? 'text-sm sm:text-base' : ''
+              } ${
                 selected ? 'bg-mikan-500 text-white shadow-[0_4px_0_0_var(--color-ink)]' : 'bg-white text-ink-soft'
               }`}
             >

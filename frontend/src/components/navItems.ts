@@ -11,6 +11,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { to: '/', label: 'ホーム', icon: 'home' },
   { to: '/adventure', label: '冒険', icon: 'adventure' },
   { to: '/gacha', label: 'ガチャ', icon: 'gacha' },
+  { to: '/friends', label: 'フレンド', icon: 'friends' },
   { to: '/ranking', label: 'ランキング', icon: 'ranking' },
   { to: '/mypage', label: 'マイページ', icon: 'mypage' },
 ]

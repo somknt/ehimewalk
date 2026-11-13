@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" shape-rendering="crispEdges">
+  <!-- アプリのアイコン（瀬戸内の空と海の上に、ドット絵のみかん） -->
+  <rect width="16" height="16" fill="#cdf2f9"/>
+  <rect y="11" width="16" height="5" fill="#4cc3d9"/>
+  <rect y="13" width="16" height="3" fill="#2aa5bd"/>
+  <g transform="translate(4 3)">
+    <rect x="4" y="0" width="1" height="1" fill="#6b4220"/>
+    <rect x="5" y="0" width="2" height="1" fill="#4caf50"/>
+    <rect x="2" y="1" width="4" height="1" fill="#3d2b1f"/>
+    <rect x="1" y="2" width="1" height="1" fill="#3d2b1f"/>
+    <rect x="2" y="2" width="4" height="1" fill="#f39800"/>
+    <rect x="6" y="2" width="1" height="1" fill="#3d2b1f"/>
+    <rect x="0" y="3" width="1" height="3" fill="#3d2b1f"/>
+    <rect x="1" y="3" width="6" height="3" fill="#f39800"/>
+    <rect x="2" y="3" width="1" height="1" fill="#ffd27a"/>
+    <rect x="7" y="3" width="1" height="3" fill="#3d2b1f"/>
+    <rect x="1" y="6" width="1" height="1" fill="#3d2b1f"/>
+    <rect x="2" y="6" width="4" height="1" fill="#f39800"/>
+    <rect x="6" y="6" width="1" height="1" fill="#3d2b1f"/>
+    <rect x="2" y="7" width="4" height="1" fill="#3d2b1f"/>
+  </g>
+</svg>

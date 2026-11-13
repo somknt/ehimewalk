@@ -9,13 +9,20 @@ import { titleName } from '../domain/titles'
 import type { StepRecord, Visit } from '../domain/types'
 import { AppearanceFields } from '../features/character/AppearanceFields'
 import { CharacterAvatar } from '../features/character/CharacterAvatar'
+import { ShowcaseCard } from '../features/demo/ShowcaseCard'
+import { pedometer } from '../features/pedometer/pedometer'
 import { aiQuestHistory } from '../features/quests/aiQuestHistory'
 import { useAction } from '../hooks/useAction'
 import { useAsyncData } from '../hooks/useAsyncData'
 import { useSession } from '../session/sessionContext'
 
 const GOAL_PRESETS = [4000, 6000, 8000, 10000]
-const SOURCE_LABELS: Record<StepRecord['source'], string> = { demo: 'デモ', healthkit: 'ヘルスケア', health_connect: 'ヘルスコネクト' }
+const SOURCE_LABELS: Record<StepRecord['source'], string> = {
+  device_motion: 'センサー',
+  demo: 'デモ',
+  healthkit: 'ヘルスケア',
+  health_connect: 'ヘルスコネクト',
+}
 
 function ErrorText({ message }: { message: string | null }) {
   if (!message) return null
@@ -316,6 +323,7 @@ function ActivityCard({ activity }: { activity: ActivitySummary }) {
 function DangerZone() {
   const remove = useAction(async () => {
     await api.deleteAllData()
+    pedometer.resetForNewUser()
     // AI が提案したコース（最近の提案・お気に入り）も消す
     aiQuestHistory.clear()
     // 保存データを消したので、最初の画面から読み込み直す
@@ -329,7 +337,7 @@ function DangerZone() {
   return (
     <Card className="border-red-700">
       <CardTitle>アカウント</CardTitle>
-      <p className="text-sm">フレンド管理とログインは、AWS連携（フェーズ2）で追加します。</p>
+      <p className="text-sm">ログインと、実際の利用者どうしのフレンドは、AWS連携（フェーズ2）で追加します。</p>
       <button type="button" onClick={onClick} disabled={remove.pending} className="rpg-button mt-3 w-full bg-red-50 text-red-800">
         すべてのデータを削除する
       </button>
@@ -380,6 +388,7 @@ export function MyPage() {
               <VisitHistoryCard visits={state.data.visits} />
             </>
           )}
+          <ShowcaseCard />
           <DangerZone />
         </div>
       </div>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { GACHA_DUPLICATE_COINS } from '../data/items'
-import { DAILY_STEP_POINT_CAP, pointsForSteps, pointsShortForGacha, pointsToAward } from './points'
+import { pointsForSteps, pointsShortForGacha, pointsToAward } from './points'
 
 describe('歩数ポイント', () => {
   it('100歩につき1ポイント（端数は切り捨て）', () => {
@@ -10,9 +10,9 @@ describe('歩数ポイント', () => {
     expect(pointsForSteps(6050)).toBe(60)
   })
 
-  it('1日の上限は10,000歩（100pt）', () => {
-    expect(pointsForSteps(12_000)).toBe(DAILY_STEP_POINT_CAP)
-    expect(DAILY_STEP_POINT_CAP).toBe(100)
+  it('1日の上限は無い（10,000歩を超えても100歩ごとに1コイン）', () => {
+    expect(pointsForSteps(12_000)).toBe(120)
+    expect(pointsForSteps(30_050)).toBe(300)
   })
 
   it('付与済みとの差分だけを付与する（二重付与しない）', () => {

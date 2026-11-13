@@ -10,7 +10,15 @@ export interface SampleUser {
   character: Character
   titleName: string
   ehimeOptIn: boolean
-  isFriend: boolean
+  /** フレンド検索に使うコード（8 文字） */
+  friendCode: string
+}
+
+/** フレンドコードに使う文字（見間違えやすい 0・O・1・I は使わない） */
+export const FRIEND_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+
+function sampleFriendCode(seed: string): string {
+  return Array.from({ length: 8 }, (_, i) => FRIEND_CODE_CHARS[Math.floor(seeded(`${seed}:code${i}`) * FRIEND_CODE_CHARS.length)]).join('')
 }
 
 const NAMES = [
@@ -67,7 +75,7 @@ export const SAMPLE_USERS: readonly SampleUser[] = NAMES.map((username, i) => {
     },
     titleName: pick(TITLES, `${seed}:title`).name,
     ehimeOptIn: seeded(`${seed}:pref`) < 0.7,
-    isFriend: i % 4 === 1,
+    friendCode: sampleFriendCode(seed),
   }
 })
 
@@ -76,3 +84,9 @@ export function sampleWeeklySteps(userId: string, weekStart: string, daysElapsed
   const perDay = 2500 + seeded(`${userId}:${weekStart}`) * 8000
   return Math.round(perDay * daysElapsed)
 }
+
+/** 初めて使うときに、フレンド申請が届いている状態にするサンプルユーザー（フレンド機能を試せるように） */
+export const SAMPLE_INCOMING_REQUEST_IDS = ['sample-1', 'sample-5'] as const
+
+/** 申請したサンプルユーザーが承認するまでの時間（モック。実際のユーザーは自分で承認する） */
+export const SAMPLE_ACCEPT_DELAY_MS = 5_000

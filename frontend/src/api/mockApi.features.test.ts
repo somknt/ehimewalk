@@ -127,7 +127,11 @@ describe('ランキング', () => {
 
   it('応援はフレンドにだけ、決まった種類だけ送れる', async () => {
     const api = createApi()
+    // 届いている申請を承認してフレンドにする
+    const [request] = (await api.getFriends()).incoming
+    await api.respondFriendRequest(request.userId, true)
     const friend = (await api.getRanking('friends')).entries[0]
+    expect(friend.userId).toBe(request.userId)
     await expect(api.sendCheer(friend.userId, 'nice')).resolves.toBeUndefined()
     await expect(api.sendCheer('sample-0', 'nice')).rejects.toMatchObject({ code: 'not_found' })
     await expect(api.sendCheer(friend.userId, 'bad' as 'nice')).rejects.toMatchObject({ code: 'invalid_input' })
@@ -280,5 +284,113 @@ describe('保存データの移行', () => {
     expect(await api.getVisits()).toEqual([
       { spotId: 'dogo_onsen_honkan', visitedAt: '2026-11-06T00:00:00.000Z', via: 'ai_quest', verified: true },
     ])
+  })
+})
+
+describe('発表用のデモ用データ', () => {
+  it('途中まで遊んだ状態になり、正式ランキングには入らない', async () => {
+    const api = createApi()
+    await api.completeOnboarding(onboarding)
+    await api.claimLoginBonus()
+    await api.demo!.prepareShowcase()
+
+    const session = await api.getSession()
+    expect(session.profile).toMatchObject({ onboarded: true, username: 'デモユーザー' })
+    expect(session.character.equipped).toMatchObject({ head: 'head_mikan_hat', pet: 'pet_koromikan' })
+    const records = await api.getStepRecords('2026-11-05', TODAY)
+    expect(records).toHaveLength(7)
+    expect(records.every((r) => r.verification === 'excluded')).toBe(true)
+    // 歩数 44,500 歩 → 445 コイン ＋ 300 コイン。前のログインボーナスは消えている
+    const balance = await api.getPointBalance()
+    expect(balance.balance).toBe(445 + 300)
+    expect(balance.loginBonusClaimedToday).toBe(false)
+    expect((await api.getVisits()).map((v) => v.spotId)).toEqual(['dogo_onsen_honkan'])
+    expect((await api.getRanking('all')).me.excludedReason).toBe('demo_data')
+    // もう一度同期しても、コインは二重付与されない
+    await api.syncSteps()
+    expect((await api.getPointBalance()).balance).toBe(745)
+  })
+})
+
+describe('フレンド', () => {
+  /** 時刻を進められる API（申請の承認待ちを試すため） */
+  function createApiWithClock() {
+    let now = NOW.getTime()
+    const api = new MockGameApi({ storage, provider, latencyMs: 0, now: () => new Date(now), enableDemoTools: true })
+    return { api, advance: (ms: number) => (now += ms) }
+  }
+
+  it('はじめは届いた申請が2件あり、フレンドはいない', async () => {
+    const data = await createApi().getFriends()
+    expect(data.friends).toEqual([])
+    expect(data.incoming.map((e) => e.userId)).toEqual(expect.arrayContaining(['sample-1', 'sample-5']))
+    expect(data.myFriendCode).toMatch(/^[A-Z2-9]{8}$/)
+    // 申請中の相手の歩数は見せない
+    expect(data.incoming.every((e) => e.weeklySteps === null)).toBe(true)
+  })
+
+  it('フレンドコードで探して申請でき、承認されるとフレンドになる', async () => {
+    const { api, advance } = createApiWithClock()
+    const [sample] = (await api.getFriends()).sampleCodes
+    // 小文字・ハイフン付きでも探せる
+    const formatted = `${sample.friendCode.slice(0, 4)}-${sample.friendCode.slice(4)}`.toLowerCase()
+    const found = await api.findUserByFriendCode(formatted)
+    expect(found).toMatchObject({ username: sample.username, relation: 'none' })
+    const sent = await api.sendFriendRequest(sample.friendCode)
+    expect(sent.outgoing.map((e) => e.username)).toEqual([sample.username])
+    // サンプルユーザーは数秒後に承認する（モック）
+    advance(6000)
+    const after = await api.getFriends()
+    expect(after.outgoing).toEqual([])
+    expect(after.friends[0]).toMatchObject({ username: sample.username, relation: 'friend' })
+    expect(after.friends[0].weeklySteps).toBeGreaterThan(0)
+    expect((await api.getRanking('friends')).entries.map((e) => e.username)).toEqual([sample.username])
+  })
+
+  it('届いた申請の承認・見送り、フレンドの解除ができる', async () => {
+    const api = createApi()
+    let data = await api.respondFriendRequest('sample-1', true)
+    expect(data.friends.map((e) => e.userId)).toEqual(['sample-1'])
+    data = await api.respondFriendRequest('sample-5', false)
+    expect(data.incoming).toEqual([])
+    data = await api.removeFriend('sample-1')
+    expect(data.friends).toEqual([])
+    await expect(api.sendCheer('sample-1', 'nice')).rejects.toMatchObject({ code: 'not_found' })
+    // 解除・見送りした状態は、再読み込みしても変わらない
+    expect((await createApi().getFriends()).incoming).toEqual([])
+  })
+
+  it('相手から申請が届いている人に申請すると、そのままフレンドになる', async () => {
+    const api = createApi()
+    const code = (await api.findUserByFriendCode((await api.getFriends()).sampleCodes[0].friendCode))!
+    expect(code.relation).toBe('none')
+    const incomingUser = (await api.getFriends()).incoming[0]
+    const sample = (await import('./sampleUsers')).SAMPLE_USERS.find((u) => u.userId === incomingUser.userId)!
+    const data = await api.sendFriendRequest(sample.friendCode)
+    expect(data.friends.map((e) => e.userId)).toEqual([incomingUser.userId])
+  })
+
+  it('正しくないコード・自分のコード・存在しないコードは申請できない', async () => {
+    const api = createApi()
+    await expect(api.findUserByFriendCode('ABC')).rejects.toMatchObject({ code: 'invalid_input' })
+    await expect(api.findUserByFriendCode('ABCD-EFG0')).rejects.toMatchObject({ code: 'invalid_input' })
+    const { myFriendCode } = await api.getFriends()
+    expect((await api.findUserByFriendCode(myFriendCode))?.relation).toBe('self')
+    await expect(api.sendFriendRequest(myFriendCode)).rejects.toMatchObject({ code: 'invalid_input' })
+    expect(await api.findUserByFriendCode('ZZZZZZZZ')).toBeNull()
+    await expect(api.sendFriendRequest('ZZZZZZZZ')).rejects.toMatchObject({ code: 'not_found' })
+  })
+
+  it('フレンド関係が無い古いデータは、初めて使うときと同じ状態になる', async () => {
+    storage.setItem(STORAGE_KEY, JSON.stringify({ version: 3, profile: { userId: 'u-9', onboarded: true } }))
+    expect((await createApi().getFriends()).incoming).toHaveLength(2)
+  })
+
+  it('発表用のデモ用データでは、フレンド3人と申請1件がある', async () => {
+    const api = createApi()
+    await api.demo!.prepareShowcase()
+    const data = await api.getFriends()
+    expect(data.friends).toHaveLength(3)
+    expect(data.incoming).toHaveLength(1)
   })
 })

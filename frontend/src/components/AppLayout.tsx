@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Link, Navigate, Outlet, useLocation } from 'react-router'
 import { api } from '../api'
+import { PedometerController } from '../features/pedometer/PedometerController'
 import { useSession } from '../session/sessionContext'
 import { BottomNav } from './BottomNav'
 import { CoinBadge } from './CoinBadge'
@@ -64,6 +65,8 @@ export function AppLayout() {
       </div>
 
       <BottomNav />
+      {/* アプリを開いたら歩数の計測を自動で始める（どの画面でも計測・同期を続ける） */}
+      <PedometerController />
     </div>
   )
 }
