@@ -416,6 +416,48 @@ const items: ItemMaster[] = [
       ),
     },
   },
+  {
+    itemId: 'accessory_sunset_mantle',
+    name: '夕焼けのマント',
+    category: 'accessory',
+    rarity: 'SR',
+    acquisitionType: 'spot',
+    description: '下灘駅で見た、伊予灘の夕焼けの色のマント。',
+    visual: {
+      kind: 'outfit',
+      front: outfitLayer(['....OMMOOMMO....'], 12, { M: '#f07a3a' }),
+      back: outfitLayer(
+        [
+          '..OOOOOOOOOOOO..',
+          '.OAAAAAAAAAAAAO.',
+          '.OAAAAAAAAAAAAO.',
+          '.OBBBBBBBBBBBBO.',
+          '.OBBBBBBBBBBBBO.',
+          '.OCCCCCCCCCCCCO.',
+          '.OCCCCCCCCCCCCO.',
+          '..OOOOOOOOOOOO..',
+        ],
+        TOP_OFFSET_Y,
+        { A: '#ffb347', B: '#f07a3a', C: '#8e4b8f' },
+      ),
+    },
+  },
+  {
+    itemId: 'top_samurai_armor',
+    name: '武将衣装',
+    category: 'top',
+    rarity: 'SR',
+    acquisitionType: 'spot',
+    description: '宇和島城を訪れた記念の、武将の衣装。',
+    visual: {
+      kind: 'outfit',
+      front: outfitLayer(
+        ['..OOKKKSSKKKOO..', '..OKOKGKKGKOKO..', '..OKOKKGGKKOKO..', '..OkOKGKKGKOkO..', '....ORRRRRRO....'],
+        TOP_OFFSET_Y,
+        { K: '#3a3f58', k: '#262a3d', G: '#e9b949', R: '#b8324a' },
+      ),
+    },
+  },
 ]
 
 export const ITEMS: ReadonlyMap<string, ItemMaster> = new Map(items.map((item) => [item.itemId, item]))

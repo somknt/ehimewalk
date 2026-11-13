@@ -47,6 +47,26 @@ const OBJECTS = {
       palette: { V: '#e0565b', O: OUTLINE, A: '#4cc3d9', a: '#cdf2f9' },
     },
   },
+  seaview: {
+    label: '海の絶景',
+    layer: {
+      rows: [
+        '............',
+        '....YYYY....',
+        '...YYYYYY...',
+        '..YYYYYYYY..',
+        '..YYYYYYYY..',
+        'HHHHHHHHHHHH',
+        'AAAAAAAAAAAA',
+        'AaaAAAAAaaAA',
+        'AAAAAaaAAAAA',
+        'AAAAAAAAAAAA',
+        'PPPPPPPPPPPP',
+        'OOOOOOOOOOOO',
+      ],
+      palette: { Y: '#f39800', H: '#f7c873', A: '#2aa5bd', a: '#cdf2f9', P: '#9a8f86', O: OUTLINE },
+    },
+  },
   landmark: {
     label: 'スポット',
     layer: {
@@ -74,6 +94,7 @@ export type SpotObjectKind = keyof typeof OBJECTS
 export function spotObjectKind(spot: TouristSpot): SpotObjectKind {
   if (spot.tags.includes('城')) return 'castle'
   if (spot.tags.includes('温泉')) return 'onsen'
+  if (spot.tags.includes('海')) return 'seaview'
   return 'landmark'
 }
 

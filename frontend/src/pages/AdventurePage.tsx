@@ -8,9 +8,11 @@ import { getItem } from '../data/items'
 import { SPOTS } from '../data/spots'
 import { distanceMeters } from '../domain/geo'
 import type { Visit } from '../domain/types'
+import { AI_QUEST_API_AVAILABLE } from '../api/aiQuestClient'
 import { useLocationPermission, type LocationPermission } from '../features/geo/useLocationPermission'
 import type { MapPosition } from '../features/map/SpotMap'
 import { SPOT_OBJECT_SIZE, spotObject } from '../features/map/spotObjects'
+import { AiQuestPlanner } from '../features/quests/AiQuestPlanner'
 import { CommonQuests } from '../features/quests/CommonQuests'
 import { QuestPlanner } from '../features/quests/QuestPlanner'
 import { AdventureZukan } from '../features/zukan/AdventureZukan'
@@ -175,7 +177,8 @@ export function AdventurePage() {
       )}
 
       <Tabs label="冒険の切り替え" tabs={TABS} active={tab} onChange={(id) => setParams({ tab: id }, { replace: true })}>
-        {tab === 'ai' && <QuestPlanner />}
+        {/* AI の API（backend）がある環境では Bedrock 経由の提案、ない公開版では従来のブラウザ内モック */}
+        {tab === 'ai' && (AI_QUEST_API_AVAILABLE ? <AiQuestPlanner /> : <QuestPlanner />)}
         {tab === 'quests' && <CommonQuests />}
         {(tab === 'spots' || tab === 'zukan') && state.status === 'loading' && <LoadingCards count={2} />}
         {tab === 'spots' && state.status === 'ready' && <SpotList visits={state.data} position={position} onShowOnMap={showOnMap} />}

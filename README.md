@@ -77,6 +77,29 @@ npm run dev
 
 `main` に push すると自動で公開されます。設定はリポジトリ直下の `vercel.json`（`frontend` をビルドして `frontend/dist` を配信、どの URL でも `index.html` を返す）にあります。
 
+### AI 散策クエスト（backend）
+
+冒険画面の「AIクエスト」タブは、`backend/`（Node.js）の API を通して Amazon Bedrock を呼びます。ブラウザからは Bedrock を直接呼ばず、API キーは backend だけが持ちます。
+
+```powershell
+# 1つ目のターミナル：AI サーバー（http://127.0.0.1:8787）
+cd backend
+npm install
+copy .env.example .env   # 初回だけ。既定は AI_PROVIDER=mock（Bedrock を呼ばない）
+npm run dev
+
+# 2つ目のターミナル：画面（/api を AI サーバーへ中継する）
+cd frontend
+npm run dev
+```
+
+- Bedrock に接続するときは、`backend/.env` の `AI_PROVIDER=bedrock` と `AWS_BEARER_TOKEN_BEDROCK` を設定する。`frontend` の `.env` や `VITE_` で始まる変数には絶対に書かない
+- モデルは `BEDROCK_MODEL_ID`（`jp.amazon.nova-2-lite-v1:0` / `jp.anthropic.claude-haiku-5-5`）で切り替える
+- 利用制限：1 人 1 日 5 回（`AI_QUEST_USER_DAILY_LIMIT`、最大 10。日本時間で日付が変わると戻る）、アプリ全体の 1 日の上限、同時実行数、タイムアウト、`maxTokens`、同じ条件の結果は 10 分キャッシュ
+- ローカル開発では利用者を接続元（このPC）で数えるため、全員で 5 回を共有する。公開運用には、ログイン（Cognito）と共有ストレージでの回数管理が必須
+- backend がない公開版（GitHub Pages など）では、従来のブラウザ内モックの画面を出す
+- テスト：`cd backend` → `npm test`（Bedrock には接続せず、偽の応答で確かめる）
+
 ### モックについて
 
 - データはブラウザの localStorage に保存します（ゲームのデータは `ewq.mock.v1`、センサーの歩数は `ewq.motion.v1`）。マイページの「すべてのデータを削除する」で消えます

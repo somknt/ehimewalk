@@ -106,7 +106,7 @@ export function AdventureZukan({ visits }: { visits: readonly Visit[] }) {
         <p className="mt-2 text-sm">
           {complete
             ? 'すべてのスポットを訪れました！ 新しいスポットの追加をお楽しみに。'
-            : `あと ${SPOTS.length - visitedCount} か所で図鑑が完成します。「クエスト」の「愛媛冒険の第一歩」も達成できます。`}
+            : `あと ${SPOTS.length - visitedCount} か所で図鑑が完成します。「クエスト」のスポットめぐりも進めてみよう。`}
         </p>
       </Card>
 

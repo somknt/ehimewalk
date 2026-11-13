@@ -66,7 +66,7 @@ export const COMMON_QUESTS: readonly CommonQuest[] = [
   {
     questId: 'ehime_first_step',
     title: '愛媛冒険の第一歩',
-    description: '登録されている 3 つのスポットをすべて訪れよう。今治城は松山から電車やバスで行けます。',
+    description: '松山城・道後温泉本館・今治城の 3 か所を訪れよう。今治城は松山から電車やバスで行けます。',
     kind: 'visit_spots',
     period: 'once',
     target: 3,

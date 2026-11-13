@@ -1,0 +1,7 @@
+node_modules/
+# 利用回数の記録（ローカル開発用）
+.data/
+# 秘密情報（API キー）。.env.example だけを置く
+.env
+.env.*
+!.env.example
