@@ -93,7 +93,7 @@ export function QuestPlanner() {
           <button
             type="submit"
             disabled={generate.pending}
-            className="rpg-button w-full bg-seto-400 text-xl disabled:opacity-60"
+            className="rpg-button w-full bg-seto-400 text-lg disabled:opacity-60 sm:text-xl"
           >
             {generate.pending ? '考えています…' : 'クエストを提案してもらう'}
           </button>
@@ -102,6 +102,7 @@ export function QuestPlanner() {
               {generate.error}
             </p>
           )}
+          <p className="text-sm font-bold">提案してもらえるのは1日5回までです。</p>
           <p className="text-xs text-ink-soft">
             訪問先は、情報源を確認して登録したスポットの中からだけ選びます。いまはAI未接続のため、規則に沿って選ぶモックで動いています。
           </p>

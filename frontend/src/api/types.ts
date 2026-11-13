@@ -1,5 +1,6 @@
 // 画面とデータ取得の境界。フェーズ1 は MockGameApi、フェーズ2 で HttpGameApi に切り替える。
 // ポイント・ガチャ・チェックイン判定・アイテム付与など、結果を決める処理はすべて API（サーバー）側で行う。
+import type { CommonQuest } from '../domain/commonQuests'
 import type { MissionKind } from '../domain/mission'
 import type { TitleStatus } from '../domain/titles'
 import type {
@@ -307,6 +308,30 @@ export interface WeeklyMission {
   generatedBy: 'mock' | 'bedrock'
 }
 
+/** みんな共通のクエストの、自分の進み具合 */
+export interface CommonQuestStatus {
+  quest: CommonQuest
+  /** 歩数、または訪れたスポットの数。community_steps はみんなの合計歩数 */
+  progress: number
+  completed: boolean
+  /** この期間の報酬を受け取り済みか */
+  claimed: boolean
+  /** community_steps：自分の今週の歩数（報酬の条件） */
+  myContribution?: number
+  /** community_steps：参加している人数 */
+  participants?: number
+  /** visit_spots：訪問済みのスポット */
+  visitedSpotIds?: string[]
+  /** 次にリセットされる日（daily・weekly のみ） */
+  resetsOn?: DateKey
+}
+
+export interface QuestClaimResult {
+  reward: number
+  balance: PointBalance
+  quests: CommonQuestStatus[]
+}
+
 /** 自分の利用状況（効果検証の個人版） */
 export interface ActivitySummary {
   activeDays: number
@@ -378,6 +403,11 @@ export interface GameApi {
 
   // ---- AI ----
   generateQuest(request: QuestRequest): Promise<QuestGenerationResult>
+
+  // ---- みんな共通のクエスト ----
+  getCommonQuests(): Promise<CommonQuestStatus[]>
+  /** 達成したクエストの報酬を受け取る（期間ごとに 1 回）。達成の判定はサーバー側で行う */
+  claimCommonQuest(questId: string): Promise<QuestClaimResult>
   getWeeklyMission(): Promise<WeeklyMission>
   getActivitySummary(): Promise<ActivitySummary>
 

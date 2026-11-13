@@ -32,7 +32,15 @@ export interface StepRecord extends DailySteps {
  * gacha_refund：ガチャで持っているアイテムが出たときのコイン変換
  * demo_grant：開発用のデモ操作で追加したコイン（開発モードのデータにだけ存在する）
  */
-export type PointReason = 'step_reward' | 'login_bonus' | 'gacha_draw' | 'gacha_refund' | 'demo_grant' | 'admin_adjustment'
+export type PointReason =
+  | 'step_reward'
+  | 'login_bonus'
+  | 'gacha_draw'
+  | 'gacha_refund'
+  | 'demo_grant'
+  | 'admin_adjustment'
+  /** みんな共通のクエストの報酬 */
+  | 'quest_reward'
 
 export interface PointTransaction {
   transactionId: string

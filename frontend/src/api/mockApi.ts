@@ -2,6 +2,7 @@
 // データは localStorage に保存する。URL に ?mockError を付けると通信エラーを再現できる。
 // 保存データは読み込むたびに検証し、壊れた項目は初期値に戻す（アプリを止めない）。
 import { isValidLatLng, judgeCheckIn } from '../domain/checkin'
+import { COMMON_QUESTS, getCommonQuest, questClaimKey, type CommonQuest } from '../domain/commonQuests'
 import { addDays, dateRange, dayOfWeek, isDateKey, startOfMonth, startOfWeek, toJstDateKey } from '../domain/date'
 import { drawItem, secureRandom, type RandomSource } from '../domain/gacha'
 import { proposeWeeklyGoal } from '../domain/mission'
@@ -55,6 +56,8 @@ import {
   type CheckInRequest,
   type CheckInResult,
   type CheerReaction,
+  type CommonQuestStatus,
+  type QuestClaimResult,
   type FriendCandidate,
   type FriendEntry,
   type FriendRelation,
@@ -108,13 +111,14 @@ const POINT_REASONS: readonly PointReason[] = [
   'gacha_refund',
   'demo_grant',
   'admin_adjustment',
+  'quest_reward',
 ]
 /** デモ操作の履歴として残す件数 */
 const MAX_DEMO_HISTORY = 200
 /** ログインボーナスのコイン（1 日 1 回） */
 export const LOGIN_BONUS_POINTS = 10
 /** AI クエスト生成の 1 日の上限回数（AI の利用料金を抑えるため） */
-export const AI_QUEST_DAILY_LIMIT = 10
+export const AI_QUEST_DAILY_LIMIT = 5
 /** 覚えておく AI クエストの件数（チェックインを AI 経由と判定するために使う） */
 const MAX_REMEMBERED_QUESTS = 30
 const MAX_QUEST_LOG = 500
@@ -160,6 +164,9 @@ interface MockDb {
   activeDates: DateKey[]
   /** フレンド関係（相手のユーザー ID ごと）。フレンド・申請中・申請が届いている */
   friendships: Record<string, Friendship>
+  /** みんな共通のクエストの報酬を受け取った記録（「クエスト ID:期間」→ 受け取った日時） */
+  questClaims: Record<string, string>
+
 }
 
 interface Friendship {
@@ -255,6 +262,7 @@ function createInitialDb(now: Date): MockDb {
     cheers: {},
     activeDates: [],
     friendships: initialFriendships(createdAt),
+    questClaims: {},
   }
 }
 
@@ -505,7 +513,17 @@ export function normalizeDb(raw: unknown, now: Date = new Date()): MockDb | null
     cheers: normalizeCheers(raw.cheers),
     activeDates: normalizeActiveDates(raw.activeDates),
     friendships: normalizeFriendships(raw.friendships, profile.createdAt),
+    questClaims: normalizeQuestClaims(raw.questClaims),
   }
+}
+
+function normalizeQuestClaims(raw: unknown): MockDb['questClaims'] {
+  const claims: MockDb['questClaims'] = {}
+  if (!isObject(raw)) return claims
+  for (const [key, claimedAt] of Object.entries(raw)) {
+    if (isString(claimedAt) && getCommonQuest(key.split(':')[0])) claims[key] = claimedAt
+  }
+  return claims
 }
 
 // ---- モックサーバー ----
@@ -1381,6 +1399,75 @@ export class MockGameApi implements GameApi {
       )
       this.saveDb(db)
       return { status: 'ok', quest, remainingToday }
+    })
+  }
+
+  // ---- みんな共通のクエスト ----
+
+  /** クエストの期間を表すキー（毎日なら日付、毎週なら週の月曜、1 回だけなら once） */
+  private questPeriodKey(quest: CommonQuest, today: DateKey): string {
+    return quest.period === 'daily' ? today : quest.period === 'weekly' ? startOfWeek(today) : 'once'
+  }
+
+  private commonQuestStatuses(db: MockDb): CommonQuestStatus[] {
+    const today = toJstDateKey(this.now())
+    const weekStart = startOfWeek(today)
+    const daysElapsed = ((dayOfWeek(today) + 6) % 7) + 1
+    const todaySteps = db.stepRecords[today]?.steps ?? 0
+    const weekSteps = Object.values(db.stepRecords)
+      .filter((r) => r.date >= weekStart && r.date <= today)
+      .reduce((sum, r) => sum + r.steps, 0)
+
+    return COMMON_QUESTS.map((quest) => {
+      const claimed = Boolean(db.questClaims[questClaimKey(quest, this.questPeriodKey(quest, today))])
+      const resetsOn = quest.period === 'daily' ? addDays(today, 1) : quest.period === 'weekly' ? addDays(weekStart, 7) : undefined
+      switch (quest.kind) {
+        case 'daily_steps':
+          return { quest, progress: todaySteps, completed: todaySteps >= quest.target, claimed, resetsOn }
+        case 'weekly_steps':
+          return { quest, progress: weekSteps, completed: weekSteps >= quest.target, claimed, resetsOn }
+        case 'community_steps': {
+          // モック：参加者は自分とサンプルユーザー。実際のサーバーでは参加者全員の集計値を返す
+          const others = SAMPLE_USERS.reduce((sum, user) => sum + sampleWeeklySteps(user.userId, weekStart, daysElapsed), 0)
+          const total = others + weekSteps
+          const enough = weekSteps >= (quest.minContribution ?? 0)
+          return {
+            quest,
+            progress: total,
+            completed: total >= quest.target && enough,
+            claimed,
+            myContribution: weekSteps,
+            participants: SAMPLE_USERS.length + 1,
+            resetsOn,
+          }
+        }
+        case 'visit_spots': {
+          const visitedSpotIds = (quest.spotIds ?? []).filter((id) => db.visits[id])
+          return { quest, progress: visitedSpotIds.length, completed: visitedSpotIds.length >= quest.target, claimed, visitedSpotIds }
+        }
+      }
+    })
+  }
+
+  getCommonQuests(): Promise<CommonQuestStatus[]> {
+    return this.simulateNetwork(() => this.commonQuestStatuses(this.loadDb()))
+  }
+
+  claimCommonQuest(questId: string): Promise<QuestClaimResult> {
+    return this.simulateNetwork(() => {
+      const quest = getCommonQuest(questId)
+      if (!quest) throw new ApiError('クエストが見つかりません。', { code: 'not_found' })
+      // 読み込みから保存まで await を挟まないので、連打しても 2 回受け取れない
+      const db = this.loadDb()
+      const status = this.commonQuestStatuses(db).find((s) => s.quest.questId === questId)
+      if (!status?.completed) throw invalid('まだクエストを達成していません。')
+      if (status.claimed) throw invalid('この報酬はもう受け取りました。')
+      const now = this.now()
+      const key = questClaimKey(quest, this.questPeriodKey(quest, toJstDateKey(now)))
+      db.questClaims[key] = now.toISOString()
+      addTransaction(db, quest.rewardCoins, 'quest_reward', now.toISOString(), key)
+      const balance = this.commit(db, true)
+      return { reward: quest.rewardCoins, balance, quests: this.commonQuestStatuses(db) }
     })
   }
 

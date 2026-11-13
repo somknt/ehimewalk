@@ -10,8 +10,10 @@ const DEMO_STEPS: { title: string; detail: string; to: string }[] = [
   { title: 'コインがたまる', detail: '100歩で1コイン。デモ操作の「+1,000歩」で増える様子を見せる', to: '/' },
   { title: 'ガチャを引く', detail: 'レア度ごとの演出と、排出確率の表示', to: '/gacha' },
   { title: '着せ替える', detail: '手に入れた衣装をすぐに着せ替える', to: '/gacha/wardrobe' },
-  { title: 'AIが散策を提案', detail: '時間・興味・ペースを変えると提案が変わる（登録スポットだけから選ぶ）', to: '/adventure?tab=quest' },
-  { title: '観光地でチェックイン', detail: '地図でスポットを確認し、限定アイテムを受け取る', to: '/adventure?tab=map' },
+  { title: '冒険の地図', detail: '現在地に自分のキャラが歩き、スポットが地図上に並ぶ', to: '/adventure' },
+  { title: 'みんなのクエスト', detail: '全員共通のクエストを達成してコインを受け取る', to: '/adventure?tab=quests' },
+  { title: 'AIが散策を提案', detail: '時間・興味・ペースを変えると提案が変わる（1日5回まで・登録スポットだけから選ぶ）', to: '/adventure?tab=ai' },
+  { title: '観光地でチェックイン', detail: '地図でスポットを確認し、限定アイテムを受け取る', to: '/adventure?tab=spots' },
   { title: '図鑑とランキング', detail: '訪れたスポットが図鑑に載り、週間歩数で競える', to: '/adventure?tab=zukan' },
   { title: '健康ミッション', detail: '過去7日間の歩数から、無理のない目標を提案する', to: '/' },
 ]

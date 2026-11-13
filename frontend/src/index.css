@@ -92,6 +92,35 @@
   animation: bob 1.6s steps(2, end) infinite;
 }
 
+/* 地図の現在地のキャラクター：歩いているように左右に揺れながら弾む */
+@keyframes map-walk {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-4deg);
+  }
+  25% {
+    transform: translateY(-4px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(0) rotate(4deg);
+  }
+  75% {
+    transform: translateY(-4px) rotate(0deg);
+  }
+}
+
+.map-walker-body {
+  transform-origin: 50% 100%;
+  animation: map-walk 0.9s steps(4, end) infinite;
+  filter: drop-shadow(1px 1px 0 #fff) drop-shadow(-1px -1px 0 #fff);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map-walker-body {
+    animation: none;
+  }
+}
+
 /* ガチャ演出（短く、スキップできる） */
 @keyframes gacha-shake {
   0%,

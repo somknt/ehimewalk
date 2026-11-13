@@ -1,4 +1,5 @@
 import { useMemo, type CSSProperties } from 'react'
+import { toRuns } from './pixelSvg'
 
 /**
  * ドット絵の 1 レイヤー。
@@ -9,36 +10,6 @@ export interface PixelLayer {
   palette: Readonly<Record<string, string>>
   offsetX?: number
   offsetY?: number
-}
-
-interface Run {
-  x: number
-  y: number
-  width: number
-  color: string
-}
-
-/** 横に連続する同じ色のピクセルを 1 つの矩形にまとめる */
-function toRuns(layer: PixelLayer): Run[] {
-  const runs: Run[] = []
-  const ox = layer.offsetX ?? 0
-  const oy = layer.offsetY ?? 0
-  layer.rows.forEach((row, y) => {
-    let x = 0
-    while (x < row.length) {
-      const char = row[x]
-      const color = layer.palette[char]
-      if (char === '.' || color === undefined) {
-        x += 1
-        continue
-      }
-      let end = x + 1
-      while (end < row.length && row[end] === char) end += 1
-      runs.push({ x: x + ox, y: y + oy, width: end - x, color })
-      x = end
-    }
-  })
-  return runs
 }
 
 interface PixelArtProps {

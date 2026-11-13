@@ -394,3 +394,71 @@ describe('フレンド', () => {
     expect(data.incoming).toHaveLength(1)
   })
 })
+
+describe('みんな共通のクエスト', () => {
+  const findQuest = async (api: MockGameApi, questId: string) => (await api.getCommonQuests()).find((s) => s.quest.questId === questId)!
+
+  it('達成前は受け取れず、達成すると1回だけコインを受け取れる', async () => {
+    const api = createApi()
+    await expect(api.claimCommonQuest('daily_3000')).rejects.toMatchObject({ code: 'invalid_input' })
+    provider.steps[TODAY] = 3500
+    await api.syncSteps()
+    expect(await findQuest(api, 'daily_3000')).toMatchObject({ progress: 3500, completed: true, claimed: false })
+    const before = (await api.getPointBalance()).balance
+    const result = await api.claimCommonQuest('daily_3000')
+    expect(result.reward).toBe(20)
+    expect(result.balance.balance).toBe(before + 20)
+    expect(result.quests.find((s) => s.quest.questId === 'daily_3000')?.claimed).toBe(true)
+    await expect(api.claimCommonQuest('daily_3000')).rejects.toMatchObject({ code: 'invalid_input' })
+    await expect(api.claimCommonQuest('nothing')).rejects.toMatchObject({ code: 'not_found' })
+  })
+
+  it('連打しても2回受け取れない', async () => {
+    const api = createApi()
+    provider.steps[TODAY] = 3500
+    await api.syncSteps()
+    const before = (await api.getPointBalance()).balance
+    await Promise.allSettled([api.claimCommonQuest('daily_3000'), api.claimCommonQuest('daily_3000')])
+    expect((await api.getPointBalance()).balance).toBe(before + 20)
+  })
+
+  it('毎週のクエストは月曜からの合計で判定し、次の週にはまた受け取れる', async () => {
+    let now = NOW.getTime()
+    const api = new MockGameApi({ storage, provider, latencyMs: 0, now: () => new Date(now), enableDemoTools: true })
+    // 2026-11-11 は水曜。前の週の日曜（11/8）の歩数は数えない
+    provider.steps['2026-11-08'] = 50_000
+    provider.steps['2026-11-09'] = 20_000
+    provider.steps['2026-11-10'] = 9_000
+    await api.syncSteps()
+    expect(await findQuest(api, 'weekly_30000')).toMatchObject({ progress: 29_000, completed: false, resetsOn: '2026-11-16' })
+    provider.steps[TODAY] = 1_000
+    await api.syncSteps()
+    await api.claimCommonQuest('weekly_30000')
+    expect((await findQuest(api, 'weekly_30000')).claimed).toBe(true)
+    // 次の週の月曜
+    now += 5 * 24 * 60 * 60 * 1000
+    provider.steps['2026-11-16'] = 30_000
+    await api.syncSteps()
+    expect(await findQuest(api, 'weekly_30000')).toMatchObject({ progress: 30_000, completed: true, claimed: false })
+  })
+
+  it('スポットめぐりは訪問したスポットの数で進み、全部まわると受け取れる', async () => {
+    const api = createApi()
+    const visit = (spotId: string) => api.checkIn({ spotId, latitude: 0, longitude: 0, accuracyM: 0, via: 'list', demoLocation: true })
+    await visit('dogo_onsen_honkan')
+    expect(await findQuest(api, 'matsuyama_history')).toMatchObject({ progress: 1, completed: false, visitedSpotIds: ['dogo_onsen_honkan'] })
+    await visit('matsuyama_castle')
+    expect((await findQuest(api, 'matsuyama_history')).completed).toBe(true)
+    expect((await api.claimCommonQuest('matsuyama_history')).reward).toBe(150)
+    // 1回だけのクエストは、日がたっても受け取り済みのまま
+    expect((await findQuest(api, 'matsuyama_history')).claimed).toBe(true)
+  })
+
+  it('みんなの歩数のクエストは、自分が少しも歩いていないと受け取れない', async () => {
+    const api = createApi()
+    const status = await findQuest(api, 'community_weekly')
+    expect(status.participants).toBeGreaterThan(1)
+    expect(status.myContribution).toBe(0)
+    expect(status.completed).toBe(false)
+  })
+})
