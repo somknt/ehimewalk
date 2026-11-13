@@ -4,4 +4,8 @@ import { defineConfig } from 'vite'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  server: {
+    // AI 散策クエストの API（backend、npm run dev）へ中継する。API キーは backend だけが持つ
+    proxy: { '/api': 'http://127.0.0.1:8787' },
+  },
 })

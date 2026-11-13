@@ -9,6 +9,7 @@ import { titleName } from '../domain/titles'
 import type { StepRecord, Visit } from '../domain/types'
 import { AppearanceFields } from '../features/character/AppearanceFields'
 import { CharacterAvatar } from '../features/character/CharacterAvatar'
+import { aiQuestHistory } from '../features/quests/aiQuestHistory'
 import { useAction } from '../hooks/useAction'
 import { useAsyncData } from '../hooks/useAsyncData'
 import { useSession } from '../session/sessionContext'
@@ -315,11 +316,13 @@ function ActivityCard({ activity }: { activity: ActivitySummary }) {
 function DangerZone() {
   const remove = useAction(async () => {
     await api.deleteAllData()
+    // AI が提案したコース（最近の提案・お気に入り）も消す
+    aiQuestHistory.clear()
     // 保存データを消したので、最初の画面から読み込み直す
     window.location.assign(import.meta.env.BASE_URL)
   })
   const onClick = () => {
-    if (window.confirm('キャラクター、コイン、アイテム、歩数の記録をすべて削除します。元に戻せません。削除しますか？')) {
+    if (window.confirm('キャラクター、コイン、アイテム、歩数の記録、AIが提案したコース（お気に入りを含む）をすべて削除します。元に戻せません。削除しますか？')) {
       void remove.run()
     }
   }
