@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { api } from '../api'
 import { Tabs } from '../components/Tabs'
@@ -6,7 +6,7 @@ import { Badge, Card, ErrorMessage, LoadingCards, PageTitle } from '../component
 import { getItem } from '../data/items'
 import { SPOTS } from '../data/spots'
 import type { Visit } from '../domain/types'
-import { AI_QUEST_API_AVAILABLE } from '../api/aiQuestClient'
+import { checkAiQuestApi } from '../api/aiQuestClient'
 import { AiQuestPlanner } from '../features/quests/AiQuestPlanner'
 import { QuestPlanner } from '../features/quests/QuestPlanner'
 import { AdventureZukan } from '../features/zukan/AdventureZukan'
@@ -58,6 +58,22 @@ function SpotList({ visits }: { visits: readonly Visit[] }) {
   )
 }
 
+/** AI の API（backend）が使える環境では Bedrock 経由の提案、使えない環境では従来のブラウザ内の提案 */
+function QuestTab() {
+  const [aiAvailable, setAiAvailable] = useState<boolean | null>(null)
+  useEffect(() => {
+    let ignore = false
+    void checkAiQuestApi().then((available) => {
+      if (!ignore) setAiAvailable(available)
+    })
+    return () => {
+      ignore = true
+    }
+  }, [])
+  if (aiAvailable === null) return <LoadingCards count={1} />
+  return aiAvailable ? <AiQuestPlanner /> : <QuestPlanner />
+}
+
 export function AdventurePage() {
   const [params, setParams] = useSearchParams()
   const tabParam = params.get('tab')
@@ -68,8 +84,7 @@ export function AdventurePage() {
     <div className="space-y-4">
       <PageTitle lead="愛媛の観光スポットを歩いてめぐろう。訪れると限定アイテムがもらえます。">冒険</PageTitle>
       <Tabs label="冒険の切り替え" tabs={TABS} active={tab} onChange={(id) => setParams({ tab: id }, { replace: true })}>
-        {/* AI の API（backend）がある環境では Bedrock 経由の提案、ない公開版では従来のブラウザ内モック */}
-        {tab === 'quest' && (AI_QUEST_API_AVAILABLE ? <AiQuestPlanner /> : <QuestPlanner />)}
+        {tab === 'quest' && <QuestTab />}
         {tab !== 'quest' && state.status === 'loading' && <LoadingCards count={2} />}
         {tab !== 'quest' && state.status === 'error' && <ErrorMessage message={state.message} onRetry={reload} />}
         {tab === 'spots' && state.status === 'ready' && <SpotList visits={state.data} />}

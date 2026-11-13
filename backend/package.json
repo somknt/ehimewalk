@@ -13,9 +13,16 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
+    "@smithy/types": "^4.20.0",
     "@types/node": "^24.19.2",
+    "esbuild": "^0.28.2",
     "tsx": "^4.23.15",
     "typescript": "~7.0.2",
     "vitest": "^5.1.0"
+  },
+  "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.1168.0",
+    "@aws-sdk/client-dynamodb": "^3.1168.0",
+    "@aws-sdk/credential-provider-web-identity": "^3.972.90"
   }
 }

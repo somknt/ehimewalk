@@ -3,15 +3,28 @@
 // 開発中は Vite が /api を backend（http://127.0.0.1:8787）へ中継する（vite.config.ts）。
 import { ApiError } from './types'
 
-/** backend の場所。未設定なら同じオリジンの /api（開発サーバーの中継）を使う。ここに秘密情報を書かない */
+/**
+ * backend の場所。未設定なら同じオリジンの /api を使う（開発中は Vite の中継、公開版は Vercel Functions）。
+ * ここに秘密情報を書かない
+ */
 const BASE_URL = (import.meta.env.VITE_AI_API_BASE_URL as string | undefined)?.replace(/\/$/, '') ?? ''
+
+let availability: Promise<boolean> | null = null
 
 /**
  * AI 散策クエストの API を使える環境か。
- * 開発サーバー（中継あり）か、VITE_AI_API_BASE_URL を設定したときだけ使う。
- * それ以外（GitHub Pages など backend がない公開版）は、従来のブラウザ内モックの画面を出す
+ * - 開発サーバー：常に使う（backend が起動していなければ、画面で接続エラーを知らせる）
+ * - 公開版：API に 1 回だけ問い合わせ、AI の設定が済んでいるときだけ使う。
+ *   API がない・未設定の環境（AI を設定していない Vercel のプロジェクトなど）では、従来のブラウザ内の提案を出す
  */
-export const AI_QUEST_API_AVAILABLE: boolean = import.meta.env.DEV || BASE_URL !== ''
+export function checkAiQuestApi(): Promise<boolean> {
+  if (import.meta.env.DEV) return Promise.resolve(true)
+  availability ??= aiQuestClient.getStatus().then(
+    (status) => status.configured,
+    () => false,
+  )
+  return availability
+}
 
 export const AI_QUEST_MINUTES = [15, 30, 45, 60] as const
 export const AI_QUEST_DISTANCES_M = [1000, 2000, 3000, 5000] as const
@@ -61,7 +74,9 @@ export class AiQuestError extends ApiError {
   }
 }
 
-const CONNECT_ERROR = 'AIサーバーに接続できませんでした。AIサーバー（backend）が起動しているか確認してください。'
+const CONNECT_ERROR = import.meta.env.DEV
+  ? 'AIサーバーに接続できませんでした。AIサーバー（backend）が起動しているか確認してください。'
+  : 'AIサーバーに接続できませんでした。時間をおいて、もう一度お試しください。'
 /** ブラウザ側の待ち時間の上限（backend 側のタイムアウトより少し長くする） */
 const CLIENT_TIMEOUT_MS = 30_000
 
