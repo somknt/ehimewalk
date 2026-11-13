@@ -10,7 +10,7 @@ export function BottomNav() {
       aria-label="メインメニュー"
       className="fixed inset-x-0 bottom-0 z-40 border-t-[3px] border-ink bg-white pb-[env(safe-area-inset-bottom)] lg:hidden"
     >
-      <ul className="mx-auto grid max-w-md grid-cols-5">
+      <ul className="mx-auto grid max-w-md" style={{ gridTemplateColumns: `repeat(${NAV_ITEMS.length}, minmax(0, 1fr))` }}>
         {NAV_ITEMS.map((item) => (
           <li key={item.to}>
             <NavLink
@@ -18,8 +18,8 @@ export function BottomNav() {
               end={item.to === '/'}
               className={({ isActive }) =>
                 [
-                  // 幅 360px の端末でも「ランキング」「マイページ」が 1 行に収まる文字サイズにしている
-                  'mx-0.5 my-1.5 flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border-2 text-xs leading-tight whitespace-nowrap',
+                  // 6 項目でも、幅 360px の端末で「ランキング」「マイページ」が 1 行に収まる文字サイズにしている
+                  'mx-px my-1.5 flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border-2 text-[0.64rem] leading-tight tracking-tighter whitespace-nowrap min-[400px]:text-xs min-[400px]:tracking-normal',
                   isActive
                     ? 'border-ink bg-mikan-100 font-bold text-mikan-800'
                     : 'border-transparent text-ink-soft hover:bg-cream',

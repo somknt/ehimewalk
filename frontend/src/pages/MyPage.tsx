@@ -334,7 +334,7 @@ function DangerZone() {
   return (
     <Card className="border-red-700">
       <CardTitle>アカウント</CardTitle>
-      <p className="text-sm">フレンド管理とログインは、AWS連携（フェーズ2）で追加します。</p>
+      <p className="text-sm">ログインと、実際の利用者どうしのフレンドは、AWS連携（フェーズ2）で追加します。</p>
       <button type="button" onClick={onClick} disabled={remove.pending} className="rpg-button mt-3 w-full bg-red-50 text-red-800">
         すべてのデータを削除する
       </button>

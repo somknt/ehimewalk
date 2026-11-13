@@ -198,6 +198,48 @@ export interface RankingResult {
 
 export type CheerReaction = 'nice' | 'fight' | 'thanks'
 
+// ---------- フレンド ----------
+
+/** 相手との関係。pending_sent：自分が申請中、pending_received：相手から申請が届いている */
+export type FriendRelation = 'none' | 'friend' | 'pending_sent' | 'pending_received' | 'self'
+
+export interface FriendEntry {
+  userId: string
+  username: string
+  character: Character
+  title: string
+  /** 今週（月曜から）の歩数。フレンドにだけ見せる */
+  weeklySteps: number | null
+  relation: FriendRelation
+  /** フレンドになった日時・申請した日時 */
+  since: string
+  /** 自分がこの相手に送った応援の回数 */
+  cheersSent: number
+  isSample: boolean
+}
+
+export interface FriendsData {
+  myFriendCode: string
+  friends: FriendEntry[]
+  /** 届いた申請 */
+  incoming: FriendEntry[]
+  /** 送った申請（承認待ち） */
+  outgoing: FriendEntry[]
+  /** フレンドにできる最大の人数 */
+  limit: number
+  /** モックだけ：試しに申請できるサンプルユーザーのフレンドコード */
+  sampleCodes: { username: string; friendCode: string }[]
+}
+
+/** フレンドコードで見つかった相手（位置情報や訪問先は含めない） */
+export interface FriendCandidate {
+  userId: string
+  username: string
+  character: Character
+  title: string
+  relation: FriendRelation
+}
+
 // ---------- 観光 ----------
 
 export interface CheckInRequest {
@@ -315,7 +357,18 @@ export interface GameApi {
 
   // ---- ランキング ----
   getRanking(scope: RankingScope): Promise<RankingResult>
+  /** 応援はフレンドにだけ、決まった種類だけ送れる */
   sendCheer(friendUserId: string, reaction: CheerReaction): Promise<void>
+
+  // ---- フレンド ----
+  getFriends(): Promise<FriendsData>
+  /** フレンドコードで相手を探す。見つからなければ null */
+  findUserByFriendCode(friendCode: string): Promise<FriendCandidate | null>
+  sendFriendRequest(friendCode: string): Promise<FriendsData>
+  /** 届いた申請に答える（accept=false なら見送る） */
+  respondFriendRequest(userId: string, accept: boolean): Promise<FriendsData>
+  /** フレンドの解除、または送った申請の取り消し */
+  removeFriend(userId: string): Promise<FriendsData>
 
   // ---- 観光 ----
   getVisits(): Promise<Visit[]>

@@ -35,7 +35,14 @@ import {
 } from '../data/items'
 import { EHIME_PREFECTURE_CODE, getSpot, QUEST_INTERESTS, SPOTS } from '../data/spots'
 import { EYE_COLORS, HAIR_COLORS, HAIR_STYLES, SKIN_TONES } from '../features/character/sprites'
-import { SAMPLE_USERS, sampleWeeklySteps } from './sampleUsers'
+import {
+  FRIEND_CODE_CHARS,
+  SAMPLE_ACCEPT_DELAY_MS,
+  SAMPLE_INCOMING_REQUEST_IDS,
+  SAMPLE_USERS,
+  sampleWeeklySteps,
+  type SampleUser,
+} from './sampleUsers'
 import { DeviceMotionStepProvider } from './stepProviders/deviceMotionStepProvider'
 import type { StepDataProvider } from './stepProviders/types'
 import {
@@ -48,6 +55,10 @@ import {
   type CheckInRequest,
   type CheckInResult,
   type CheerReaction,
+  type FriendCandidate,
+  type FriendEntry,
+  type FriendRelation,
+  type FriendsData,
   type DemoCoinAmount,
   type DemoHistoryEntry,
   type DemoStepAmount,
@@ -147,6 +158,29 @@ interface MockDb {
   cheers: Record<string, number>
   /** アプリを利用した日（効果検証の「利用日数」） */
   activeDates: DateKey[]
+  /** フレンド関係（相手のユーザー ID ごと）。フレンド・申請中・申請が届いている */
+  friendships: Record<string, Friendship>
+}
+
+interface Friendship {
+  status: 'accepted' | 'pending_sent' | 'pending_received'
+  /** フレンドになった日時、または申請した日時 */
+  since: string
+}
+
+const FRIENDSHIP_STATUSES: readonly Friendship['status'][] = ['accepted', 'pending_sent', 'pending_received']
+/** フレンドにできる最大の人数（フレンドランキングの取得を重くしないため） */
+export const MAX_FRIENDS = 100
+const FRIEND_CODE_PATTERN = new RegExp(`^[${FRIEND_CODE_CHARS}]{8}$`)
+
+/** 入力されたフレンドコードを正規化する（小文字・空白・ハイフンを許す） */
+export function normalizeFriendCode(input: string): string {
+  return input.toUpperCase().replace(/[\s-]/g, '')
+}
+
+/** 初めて使うときのフレンド関係（サンプルユーザーから申請が届いている） */
+function initialFriendships(createdAt: string): MockDb['friendships'] {
+  return Object.fromEntries(SAMPLE_INCOMING_REQUEST_IDS.map((id) => [id, { status: 'pending_received', since: createdAt }]))
 }
 
 /** localStorage と同じ形の保存先（テストではメモリに差し替える） */
@@ -181,8 +215,6 @@ function resolveStorage(): { storage: KeyValueStorage; persistent: boolean } {
     return { storage: new MemoryStorage(), persistent: false }
   }
 }
-
-const FRIEND_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 
 function generateFriendCode(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(8))
@@ -222,6 +254,7 @@ function createInitialDb(now: Date): MockDb {
     quests: {},
     cheers: {},
     activeDates: [],
+    friendships: initialFriendships(createdAt),
   }
 }
 
@@ -422,6 +455,19 @@ function normalizeCheers(raw: unknown): MockDb['cheers'] {
   return cheers
 }
 
+/** フレンド関係が保存されていない古いデータは、初めて使うときと同じ状態にする */
+function normalizeFriendships(raw: unknown, createdAt: string): MockDb['friendships'] {
+  if (!isObject(raw)) return initialFriendships(createdAt)
+  const friendships: MockDb['friendships'] = {}
+  for (const [userId, value] of Object.entries(raw)) {
+    if (!SAMPLE_USERS.some((u) => u.userId === userId) || !isObject(value)) continue
+    if (oneOf(FRIENDSHIP_STATUSES)(value.status) && isString(value.since)) {
+      friendships[userId] = { status: value.status, since: value.since }
+    }
+  }
+  return friendships
+}
+
 function normalizeActiveDates(raw: unknown): DateKey[] {
   if (!Array.isArray(raw)) return []
   return [...new Set(raw.filter((d): d is string => isString(d) && isDateKey(d)))].sort().slice(-MAX_ACTIVE_DATES)
@@ -458,6 +504,7 @@ export function normalizeDb(raw: unknown, now: Date = new Date()): MockDb | null
     quests: normalizeQuests(raw.quests),
     cheers: normalizeCheers(raw.cheers),
     activeDates: normalizeActiveDates(raw.activeDates),
+    friendships: normalizeFriendships(raw.friendships, profile.createdAt),
   }
 }
 
@@ -999,12 +1046,13 @@ export class MockGameApi implements GameApi {
     return this.simulateNetwork(() => {
       if (!RANKING_SCOPES.includes(scope)) throw invalid('ランキングの種類が正しくありません。')
       const db = this.loadDb()
+      if (this.settleSampleRequests(db)) this.saveDb(db)
       const today = toJstDateKey(this.now())
       const weekStart = startOfWeek(today)
       const daysElapsed = ((dayOfWeek(today) + 6) % 7) + 1
 
       const users = SAMPLE_USERS.filter((user) =>
-        scope === 'ehime' ? user.ehimeOptIn : scope === 'friends' ? user.isFriend : true,
+        scope === 'ehime' ? user.ehimeOptIn : scope === 'friends' ? db.friendships[user.userId]?.status === 'accepted' : true,
       )
       const weekRecords = Object.values(db.stepRecords).filter((r) => r.date >= weekStart && r.date <= today)
       const myWeeklySteps = weekRecords.reduce((sum, r) => sum + r.steps, 0)
@@ -1050,13 +1098,151 @@ export class MockGameApi implements GameApi {
 
   sendCheer(friendUserId: string, reaction: CheerReaction): Promise<void> {
     return this.simulateNetwork(() => {
-      const friend = SAMPLE_USERS.find((user) => user.userId === friendUserId && user.isFriend)
-      if (!friend) throw new ApiError('フレンドが見つかりません。', { code: 'not_found' })
+      const db = this.loadDb()
+      if (db.friendships[friendUserId]?.status !== 'accepted') throw new ApiError('フレンドが見つかりません。', { code: 'not_found' })
       // 応援は定型のものだけ（自由文による嫌がらせを防ぐ）
       if (!CHEER_REACTIONS.includes(reaction)) throw invalid('送れない応援です。')
-      const db = this.loadDb()
       db.cheers[friendUserId] = (db.cheers[friendUserId] ?? 0) + 1
       this.saveDb(db)
+    })
+  }
+
+  // ---- フレンド ----
+
+  /**
+   * モックだけ：サンプルユーザーに送った申請は、少し時間がたつと承認されたことにする。
+   * 実際のサーバーでは、相手が承認したときに状態が変わる。変更があれば true
+   */
+  private settleSampleRequests(db: MockDb): boolean {
+    const now = this.now().getTime()
+    let changed = false
+    for (const [userId, friendship] of Object.entries(db.friendships)) {
+      if (friendship.status !== 'pending_sent') continue
+      const sentAt = Date.parse(friendship.since)
+      if (Number.isFinite(sentAt) && now - sentAt >= SAMPLE_ACCEPT_DELAY_MS) {
+        db.friendships[userId] = { status: 'accepted', since: new Date(now).toISOString() }
+        changed = true
+      }
+    }
+    return changed
+  }
+
+  private relationOf(db: MockDb, userId: string): FriendRelation {
+    if (userId === db.profile.userId) return 'self'
+    const status = db.friendships[userId]?.status
+    return status === 'accepted' ? 'friend' : (status ?? 'none')
+  }
+
+  private toFriendsData(db: MockDb): FriendsData {
+    const today = toJstDateKey(this.now())
+    const weekStart = startOfWeek(today)
+    const daysElapsed = ((dayOfWeek(today) + 6) % 7) + 1
+    const entry = (user: SampleUser, friendship: Friendship): FriendEntry => {
+      const relation = this.relationOf(db, user.userId)
+      return {
+        userId: user.userId,
+        username: user.username,
+        character: user.character,
+        title: user.titleName,
+        // 歩数はフレンドにだけ見せる
+        weeklySteps: relation === 'friend' ? sampleWeeklySteps(user.userId, weekStart, daysElapsed) : null,
+        relation,
+        since: friendship.since,
+        cheersSent: db.cheers[user.userId] ?? 0,
+        isSample: true,
+      }
+    }
+    const listOf = (status: Friendship['status']) =>
+      SAMPLE_USERS.flatMap((user) => {
+        const friendship = db.friendships[user.userId]
+        return friendship?.status === status ? [entry(user, friendship)] : []
+      }).sort((a, b) => b.since.localeCompare(a.since))
+    return {
+      myFriendCode: db.profile.friendCode,
+      friends: listOf('accepted').sort((a, b) => (b.weeklySteps ?? 0) - (a.weeklySteps ?? 0)),
+      incoming: listOf('pending_received'),
+      outgoing: listOf('pending_sent'),
+      limit: MAX_FRIENDS,
+      // 試しに申請できるよう、まだ関係の無いサンプルユーザーのコードを 3 人分出す
+      sampleCodes: SAMPLE_USERS.filter((user) => !db.friendships[user.userId])
+        .slice(0, 3)
+        .map((user) => ({ username: user.username, friendCode: user.friendCode })),
+    }
+  }
+
+  getFriends(): Promise<FriendsData> {
+    return this.simulateNetwork(() => {
+      const db = this.loadDb()
+      if (this.settleSampleRequests(db)) this.saveDb(db)
+      return this.toFriendsData(db)
+    })
+  }
+
+  findUserByFriendCode(friendCode: string): Promise<FriendCandidate | null> {
+    return this.simulateNetwork(() => {
+      const code = normalizeFriendCode(isString(friendCode) ? friendCode : '')
+      if (!FRIEND_CODE_PATTERN.test(code)) throw invalid('フレンドコードは英数字8文字で入力してください。')
+      const db = this.loadDb()
+      if (this.settleSampleRequests(db)) this.saveDb(db)
+      if (code === db.profile.friendCode) {
+        return { userId: db.profile.userId, username: db.profile.username, character: db.character, title: db.profile.title, relation: 'self' }
+      }
+      const user = SAMPLE_USERS.find((u) => u.friendCode === code)
+      if (!user) return null
+      // 見つかった相手には、名前・見た目・称号だけを見せる（歩数・位置情報は見せない）
+      return { userId: user.userId, username: user.username, character: user.character, title: user.titleName, relation: this.relationOf(db, user.userId) }
+    })
+  }
+
+  sendFriendRequest(friendCode: string): Promise<FriendsData> {
+    return this.simulateNetwork(() => {
+      const code = normalizeFriendCode(isString(friendCode) ? friendCode : '')
+      if (!FRIEND_CODE_PATTERN.test(code)) throw invalid('フレンドコードは英数字8文字で入力してください。')
+      const db = this.loadDb()
+      if (code === db.profile.friendCode) throw invalid('自分のフレンドコードです。')
+      const user = SAMPLE_USERS.find((u) => u.friendCode === code)
+      if (!user) throw new ApiError('このフレンドコードのユーザーは見つかりませんでした。', { code: 'not_found' })
+      const current = db.friendships[user.userId]
+      const now = this.now().toISOString()
+      if (current?.status === 'accepted') throw invalid('すでにフレンドです。')
+      if (current?.status === 'pending_received') {
+        // 相手からも申請が届いていれば、そのままフレンドになる
+        db.friendships[user.userId] = { status: 'accepted', since: now }
+      } else if (!current) {
+        const count = Object.values(db.friendships).filter((f) => f.status !== 'pending_received').length
+        if (count >= MAX_FRIENDS) throw invalid(`フレンドと申請中の人数は${MAX_FRIENDS}人までです。`)
+        db.friendships[user.userId] = { status: 'pending_sent', since: now }
+      }
+      this.saveDb(db)
+      return this.toFriendsData(db)
+    })
+  }
+
+  respondFriendRequest(userId: string, accept: boolean): Promise<FriendsData> {
+    return this.simulateNetwork(() => {
+      const db = this.loadDb()
+      if (db.friendships[userId]?.status !== 'pending_received') throw new ApiError('この申請は見つかりませんでした。', { code: 'not_found' })
+      if (accept) {
+        const friends = Object.values(db.friendships).filter((f) => f.status === 'accepted').length
+        if (friends >= MAX_FRIENDS) throw invalid(`フレンドは${MAX_FRIENDS}人までです。`)
+        db.friendships[userId] = { status: 'accepted', since: this.now().toISOString() }
+      } else {
+        delete db.friendships[userId]
+      }
+      this.saveDb(db)
+      return this.toFriendsData(db)
+    })
+  }
+
+  removeFriend(userId: string): Promise<FriendsData> {
+    return this.simulateNetwork(() => {
+      const db = this.loadDb()
+      const status = db.friendships[userId]?.status
+      if (status !== 'accepted' && status !== 'pending_sent') throw new ApiError('フレンドが見つかりません。', { code: 'not_found' })
+      delete db.friendships[userId]
+      delete db.cheers[userId]
+      this.saveDb(db)
+      return this.toFriendsData(db)
     })
   }
 
@@ -1317,6 +1503,11 @@ export class MockGameApi implements GameApi {
           }
           db.inventory[getSpot(SHOWCASE.visitedSpotId)!.rewardItemId] = { acquiredAt: createdAt }
           db.activeDates = dateRange(windowStart, today)
+          // フレンド 3 人と、届いている申請 1 件
+          db.friendships = {
+            ...Object.fromEntries(SHOWCASE.friendIds.map((id) => [id, { status: 'accepted' as const, since: createdAt }])),
+            [SHOWCASE.incomingFriendId]: { status: 'pending_received', since: createdAt },
+          }
           this.commit(db, true)
         }),
     }
@@ -1333,4 +1524,6 @@ const SHOWCASE = {
   steps: [5200, 7400, 6100, 9300, 4800, 8200, 3500],
   coins: 300,
   visitedSpotId: 'dogo_onsen_honkan',
+  friendIds: ['sample-2', 'sample-6', 'sample-9'],
+  incomingFriendId: 'sample-1',
 } as const
