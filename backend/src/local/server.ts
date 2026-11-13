@@ -1,32 +1,12 @@
 // ローカル開発用の HTTP サーバー（node:http）。この PC の中からだけ接続できる（127.0.0.1 で待ち受け）。
 // 起動：cd backend → npm run dev（backend/.env を読み込み、main.ts から startServer() を呼ぶ）
-import { createServer, type IncomingMessage } from 'node:http'
+import { createServer } from 'node:http'
 import { createApp } from '../app'
 import { ConfigError, loadConfig, toPublicConfig } from '../config'
-import { MAX_BODY_BYTES, type HttpRequest } from '../http/handler'
+import { BodyTooLargeError, collectHeaders, readBody, sendError, sendResponse } from '../http/node'
 import { errorKind, log } from '../log'
 
 const HOST = '127.0.0.1'
-
-class BodyTooLargeError extends Error {}
-
-function readBody(req: IncomingMessage): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = []
-    let size = 0
-    req.on('data', (chunk: Buffer) => {
-      size += chunk.length
-      if (size > MAX_BODY_BYTES) {
-        reject(new BodyTooLargeError())
-        req.destroy()
-        return
-      }
-      chunks.push(chunk)
-    })
-    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')))
-    req.on('error', reject)
-  })
-}
 
 export function startServer(port?: number) {
   let config
@@ -45,28 +25,23 @@ export function startServer(port?: number) {
     try {
       body = await readBody(req)
     } catch (error) {
-      const status = error instanceof BodyTooLargeError ? 413 : 400
-      res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' })
-      res.end(JSON.stringify({ error: { code: status === 413 ? 'payload_too_large' : 'invalid_input', message: 'リクエストが正しくありません。' } }))
+      const tooLarge = error instanceof BodyTooLargeError
+      sendError(res, tooLarge ? 413 : 400, tooLarge ? 'payload_too_large' : 'invalid_input', 'リクエストが正しくありません。')
       return
     }
-    const headers: HttpRequest['headers'] = {}
-    for (const [name, value] of Object.entries(req.headers)) headers[name.toLowerCase()] = Array.isArray(value) ? value[0] : value
     try {
       const response = await handle({
         method: req.method ?? 'GET',
         path: url.pathname,
-        headers,
+        headers: collectHeaders(req),
         body,
         // X-Forwarded-For などのヘッダーは書き換えられるため使わない
         identity: `ip:${req.socket.remoteAddress ?? 'unknown'}`,
       })
-      res.writeHead(response.status, response.headers)
-      res.end(response.body)
+      sendResponse(res, response)
     } catch (error) {
       log.error('unexpected_error', { kind: errorKind(error) })
-      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' })
-      res.end(JSON.stringify({ error: { code: 'server_error', message: 'サーバーでエラーが起きました。' } }))
+      sendError(res, 500, 'server_error', 'サーバーでエラーが起きました。')
     }
   })
 

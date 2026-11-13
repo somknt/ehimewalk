@@ -1,17 +1,21 @@
-// 設定から、AI の呼び出し口・回数管理・HTTP の処理を組み立てる（ローカルサーバーとテストで共通）。
+// 設定から、AI の呼び出し口・回数管理・HTTP の処理を組み立てる（ローカルサーバー・Vercel・テストで共通）。
 import { isBedrockConfigured, type ServerConfig } from './config'
 import { createHandler } from './http/handler'
-import { FileQuotaStore, MemoryQuotaStore, type QuotaStore } from './limits/quota'
+import { FileQuotaStore, MemoryQuotaStore, StoreQuotaCounter, type QuotaCounter, type QuotaStore } from './limits/quota'
 import { log, registerSecret } from './log'
-import { BedrockQuestProvider, type FetchLike } from './quests/providers/bedrock'
+import { ApiKeyTransport, BedrockQuestProvider, type ConverseTransport, type FetchLike } from './quests/providers/bedrock'
 import { MockQuestProvider } from './quests/providers/mock'
 import type { AiQuestProvider } from './quests/providers/types'
 import { QuestService } from './quests/service'
 
 export interface AppOptions {
   config: ServerConfig
+  /** 回数を数える場所。省略時は設定に応じてファイルかメモリ */
+  quotaCounter?: QuotaCounter
   quotaStore?: QuotaStore
   provider?: AiQuestProvider
+  /** Bedrock への送信の方法。省略時は API キー（ローカル開発） */
+  transport?: ConverseTransport
   fetchImpl?: FetchLike
   now?: () => Date
   mockDelayMs?: number
@@ -25,15 +29,17 @@ export function createApp(options: AppOptions) {
   const provider =
     options.provider ??
     (config.provider === 'bedrock'
-      ? new BedrockQuestProvider(config, options.fetchImpl)
+      ? new BedrockQuestProvider(config, options.transport ?? new ApiKeyTransport(config, options.fetchImpl))
       : new MockQuestProvider({ delayMs: options.mockDelayMs }))
 
   if (config.provider === 'bedrock' && !isBedrockConfigured(config)) {
     // キーの値は出さず、未設定であることだけを知らせる
-    log.warn('bedrock_api_key_missing', { message: 'AWS_BEARER_TOKEN_BEDROCK が未設定です。AI の提案は作れません。' })
+    log.warn('bedrock_credentials_missing', { message: 'Bedrock の認証情報が未設定です。AI の提案は作れません。' })
   }
 
-  const quotaStore = options.quotaStore ?? (config.quotaFile ? new FileQuotaStore(config.quotaFile) : new MemoryQuotaStore())
-  const service = new QuestService({ config, provider, quotaStore, now: options.now })
+  const quotaCounter =
+    options.quotaCounter ??
+    new StoreQuotaCounter(options.quotaStore ?? (config.quotaFile ? new FileQuotaStore(config.quotaFile) : new MemoryQuotaStore()))
+  const service = new QuestService({ config, provider, quotaCounter, now: options.now })
   return { service, handle: createHandler({ config, service }) }
 }

@@ -19,8 +19,13 @@ export interface ServerConfig {
   bedrock: {
     region: (typeof ALLOWED_REGIONS)[number]
     modelId: ModelId
-    /** API キー。未設定なら null。この値をログ・レスポンスに出さない */
+    /** API キー（ローカル開発用）。未設定なら null。この値をログ・レスポンスに出さない */
     apiKey: string | null
+    /**
+     * 公開版（Vercel）で引き受ける IAM ロールの ARN（AWS_ROLE_ARN）。
+     * Vercel の OIDC トークンと交換して一時的な認証情報を得るので、長期のキーを置かない
+     */
+    roleArn: string | null
   }
   limits: {
     userDailyLimit: number
@@ -32,8 +37,11 @@ export interface ServerConfig {
     maxCandidates: number
   }
   port: number
-  allowedOrigin: string
+  /** 呼び出しを許可する配信元（ALLOWED_ORIGIN。カンマ区切りで複数可） */
+  allowedOrigins: string[]
   quotaFile: string
+  /** 回数を数える DynamoDB のテーブル名（公開版で使う。AI_QUEST_QUOTA_TABLE） */
+  quotaTable: string | null
 }
 
 export class ConfigError extends Error {
@@ -67,10 +75,25 @@ export function loadConfig(env: Env = process.env): ServerConfig {
   if (!ALLOWED_REGIONS.includes(region)) throw new ConfigError(`BEDROCK_REGION は ${ALLOWED_REGIONS.join(' / ')} にしてください`)
 
   const apiKey = env.AWS_BEARER_TOKEN_BEDROCK?.trim() || null
+  const roleArn = env.AWS_ROLE_ARN?.trim() || null
+  if (roleArn !== null && !ROLE_ARN_PATTERN.test(roleArn)) {
+    throw new ConfigError('AWS_ROLE_ARN は IAM ロールの ARN（arn:aws:iam::123456789012:role/名前）にしてください')
+  }
+  const quotaTable = env.AI_QUEST_QUOTA_TABLE?.trim() || null
+  if (quotaTable !== null && !TABLE_NAME_PATTERN.test(quotaTable)) {
+    throw new ConfigError('AI_QUEST_QUOTA_TABLE は英数字と _ - . の 3〜255 文字にしてください')
+  }
+  const allowedOrigins = (env.ALLOWED_ORIGIN?.trim() || 'http://localhost:5173')
+    .split(',')
+    .map((origin) => origin.trim().replace(/\/$/, ''))
+    .filter(Boolean)
+  for (const origin of allowedOrigins) {
+    if (!ORIGIN_PATTERN.test(origin)) throw new ConfigError('ALLOWED_ORIGIN は https://example.com の形（パスなし）にしてください')
+  }
 
   return {
     provider,
-    bedrock: { region, modelId, apiKey },
+    bedrock: { region, modelId, apiKey, roleArn },
     limits: {
       userDailyLimit: intIn(env, 'AI_QUEST_USER_DAILY_LIMIT', MAX_USER_DAILY_LIMIT, 1, MAX_USER_DAILY_LIMIT),
       globalDailyLimit: intIn(env, 'AI_QUEST_GLOBAL_DAILY_LIMIT', 200, 1, 10_000),
@@ -81,14 +104,19 @@ export function loadConfig(env: Env = process.env): ServerConfig {
       maxCandidates: intIn(env, 'AI_QUEST_MAX_CANDIDATES', 5, 1, 8),
     },
     port: intIn(env, 'PORT', 8787, 1, 65_535),
-    allowedOrigin: env.ALLOWED_ORIGIN?.trim() || 'http://localhost:5173',
+    allowedOrigins,
     quotaFile: env.AI_QUEST_QUOTA_FILE?.trim() || '.data/ai-quota.json',
+    quotaTable,
   }
 }
 
-/** Bedrock を実際に呼べる状態か（API キーの有無だけを返し、値は返さない） */
+const ROLE_ARN_PATTERN = /^arn:aws:iam::\d{12}:role\/[\w+=,.@/-]{1,512}$/
+const TABLE_NAME_PATTERN = /^[A-Za-z0-9_.-]{3,255}$/
+const ORIGIN_PATTERN = /^https?:\/\/[A-Za-z0-9.-]+(:\d{1,5})?$/
+
+/** Bedrock を実際に呼べる状態か（認証情報の有無だけを返し、値は返さない） */
 export function isBedrockConfigured(config: ServerConfig): boolean {
-  return config.provider === 'bedrock' && config.bedrock.apiKey !== null
+  return config.provider === 'bedrock' && (config.bedrock.apiKey !== null || config.bedrock.roleArn !== null)
 }
 
 /** 画面に返してよい設定だけ */
@@ -96,7 +124,7 @@ export function toPublicConfig(config: ServerConfig) {
   return {
     provider: config.provider,
     model: config.provider === 'bedrock' ? config.bedrock.modelId : null,
-    configured: config.provider === 'mock' || config.bedrock.apiKey !== null,
+    configured: config.provider === 'mock' || isBedrockConfigured(config),
     dailyLimit: config.limits.userDailyLimit,
   }
 }

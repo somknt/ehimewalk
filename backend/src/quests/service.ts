@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto'
 import type { ServerConfig } from '../config'
 import { TtlCache, cacheKey } from '../limits/cache'
 import { ConcurrencyLimiter } from '../limits/concurrency'
-import { QuotaManager, hashIdentity, type QuotaStore } from '../limits/quota'
+import { QuotaManager, hashIdentity, type QuotaCounter } from '../limits/quota'
 import { errorKind, log } from '../log'
 import {
   buildRouteFromSpotIds,
@@ -28,7 +28,7 @@ const LOAD_LABELS: Record<WalkingLoad, string> = { easy: 'ゆったり', normal:
 export interface QuestServiceDeps {
   config: ServerConfig
   provider: AiQuestProvider
-  quotaStore: QuotaStore
+  quotaCounter: QuotaCounter
   now?: () => Date
 }
 
@@ -45,7 +45,7 @@ export class QuestService {
     this.provider = deps.provider
     this.now = deps.now ?? (() => new Date())
     this.quota = new QuotaManager({
-      store: deps.quotaStore,
+      counter: deps.quotaCounter,
       userLimit: deps.config.limits.userDailyLimit,
       globalLimit: deps.config.limits.globalDailyLimit,
       today: () => toJstDateKey(this.now()),
@@ -55,9 +55,9 @@ export class QuestService {
   }
 
   /** 今日の残り回数と、AI の接続状態（画面表示用） */
-  status(identity: string) {
+  async status(identity: string) {
     return {
-      remainingToday: this.quota.remaining(identity),
+      remainingToday: await this.quota.remaining(identity),
       dailyLimit: this.config.limits.userDailyLimit,
       provider: this.provider.name,
       model: this.provider.model,
@@ -88,7 +88,7 @@ export class QuestService {
       return {
         status: 'no_spots',
         nearest: nearest ? { spotId: nearest.spot.spotId, name: nearest.spot.name, distanceM: nearest.distanceM } : null,
-        remainingToday: this.quota.remaining(identity),
+        remainingToday: await this.quota.remaining(identity),
         dailyLimit,
       }
     }
@@ -109,7 +109,7 @@ export class QuestService {
     const cached = this.cache.get(key)
     if (cached) {
       log.info('ai_quest_cache_hit', { provider: this.provider.name })
-      return { status: 'ok', quest: cached, cached: true, remainingToday: this.quota.remaining(identity), dailyLimit }
+      return { status: 'ok', quest: cached, cached: true, remainingToday: await this.quota.remaining(identity), dailyLimit }
     }
 
     // 3. 設定の確認（API キーがなければ呼ばない。回数も減らさない）
@@ -120,12 +120,12 @@ export class QuestService {
     // 4. 同時実行の枠（同じ利用者の連打と、全体の同時呼び出しを抑える）
     const releaseSlot = this.limiter.tryAcquire(hashIdentity(identity))
     if (!releaseSlot) {
-      throw new QuestError('busy', 'ただいま提案を作成中です。少し待ってから、もう一度お試しください。', this.quota.remaining(identity))
+      throw new QuestError('busy', 'ただいま提案を作成中です。少し待ってから、もう一度お試しください。', await this.quota.remaining(identity))
     }
 
     try {
       // 5. 回数の予約（上限を超えるなら AI を呼ばない）
-      const reservation = this.quota.reserve(identity)
+      const reservation = await this.quota.reserve(identity)
       if (!reservation.ok) {
         if (reservation.reason === 'user_limit') {
           throw new QuestError('quota_exceeded', '今日のAI提案の回数（1日' + dailyLimit + '回）を使い切りました。また明日お試しください。', 0)
@@ -156,7 +156,7 @@ export class QuestService {
       try {
         ;({ raw, usage } = await this.provider.generate(prompt))
       } catch (error) {
-        throw this.toQuestError(error, reservation.release, reservation.remaining)
+        throw await this.toQuestError(error, reservation.release, reservation.remaining)
       }
 
       // 7. 回答の検証（候補にないスポットが 1 つでもあれば採用しない。回数は戻さない：AI は呼ばれている）
@@ -223,7 +223,7 @@ export class QuestService {
   }
 
   /** AI 呼び出しの失敗を、画面に出せるエラーにする。請求されていない失敗では回数を戻す */
-  private toQuestError(error: unknown, releaseQuota: () => void, remaining: number): QuestError {
+  private async toQuestError(error: unknown, releaseQuota: () => Promise<void>, remaining: number): Promise<QuestError> {
     // 回答の解析で起きたエラー（AI は呼ばれている）は、そのまま返す。回数は戻さない
     if (error instanceof QuestError) {
       log.warn('ai_quest_rejected', { reason: (error as { detail?: string }).detail ?? error.code, provider: this.provider.name })
@@ -234,14 +234,14 @@ export class QuestService {
     log.warn('ai_quest_failed', { kind, httpStatus, provider: this.provider.name })
     switch (kind) {
       case 'not_configured':
-        releaseQuota()
+        await releaseQuota()
         return new QuestError('ai_not_configured', 'AIの設定が完了していないため、提案を作れません。管理者にお問い合わせください。')
       case 'throttled':
-        releaseQuota()
+        await releaseQuota()
         return new QuestError('ai_unavailable', 'AIが混み合っています。少し時間をおいてからお試しください。', remaining + 1)
       case 'rejected':
       case 'network':
-        releaseQuota()
+        await releaseQuota()
         return new QuestError('ai_unavailable', 'AIに接続できませんでした。時間をおいて、もう一度お試しください。', remaining + 1)
       case 'timeout':
         // 時間切れでも AI 側で処理され、料金がかかった可能性があるため、回数は戻さない

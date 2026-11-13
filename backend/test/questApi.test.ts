@@ -28,7 +28,7 @@ describe('APIキー未設定', () => {
     expect(res.status).toBe(503)
     expect(parse(res).error.code).toBe('ai_not_configured')
     expect(f.calls).toHaveLength(0)
-    expect(service.status('ip:127.0.0.1').remainingToday).toBe(10)
+    expect((await service.status('ip:127.0.0.1')).remainingToday).toBe(10)
   })
 })
 
@@ -217,7 +217,7 @@ describe('APIエラー・タイムアウト', () => {
     expect(res.status).toBe(502)
     expect(parse(res).error.code).toBe('ai_unavailable')
     expect(res.body).not.toContain('internal detail')
-    expect(service.status('ip:127.0.0.1').remainingToday).toBe(10)
+    expect((await service.status('ip:127.0.0.1')).remainingToday).toBe(10)
   })
 
   it('時間切れは 504 にする。自動の再試行はしない', async () => {
@@ -302,7 +302,7 @@ describe('モック（AI_PROVIDER=mock）', () => {
     const { handle, service } = makeApp({ env: { AI_PROVIDER: 'mock' } })
     const res = await handle(post({ ...validRequest, startSpotId: 'current', currentLocation: { latitude: 35.68, longitude: 139.76 } }))
     expect(parse(res)).toMatchObject({ status: 'no_spots', nearest: { spotId: expect.any(String) } })
-    expect(service.status('ip:127.0.0.1').remainingToday).toBe(10)
+    expect((await service.status('ip:127.0.0.1')).remainingToday).toBe(10)
   })
 
   it('残り回数を返す', async () => {
