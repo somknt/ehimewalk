@@ -142,7 +142,7 @@ AWS Budgets で月の予算（例：3 USD）を作り、実際の金額が 80% �
 
 ## 7. 確認する
 
-1. ブラウザで `https://ehime-walk.vercel.app/api/ai/quests/quota` を開く。`"provider":"bedrock"`、`"configured":true`、`"remainingToday":10` が表示されれば準備完了（この確認では AI を呼ばず、回数も減らない）
+1. ブラウザで `https://ehime-walk.vercel.app/api/ai/quests/quota` を開く。`"provider":"bedrock"`、`"configured":true`、`"remainingToday":5` が表示されれば準備完了（この確認では AI を呼ばず、回数も減らない）
 2. アプリの「冒険 → AIクエスト」で 1 回提案させる（1 日 5 回のうち 1 回を使う）
 
 ## うまく動かないとき
