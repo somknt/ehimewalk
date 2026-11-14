@@ -76,7 +76,7 @@ function ProfileCard() {
             {titleName(profile.titleId)}
           </p>
           <p className="mt-2 text-sm text-ink-soft">
-            フレンドコード：<span className="font-pixel tracking-widest text-ink">{profile.friendCode}</span>
+            フレンドID：<span className="font-pixel tracking-widest text-ink">{profile.friendCode}</span>
           </p>
         </div>
       </div>

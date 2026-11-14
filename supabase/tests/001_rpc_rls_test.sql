@@ -281,9 +281,8 @@ select ewq_test.ok((public.get_point_balance() ->> 'balance')::integer = 0
                    and (select count(*) from public.visits) = 0
                    and (select count(*) from public.coin_transactions) = 0
                    and (public.get_session() -> 'profile' ->> 'onboarded')::boolean = false
-                   and (public.get_session() -> 'profile' ->> 'friendCode') <> ewq_test.v('code_a')
                    and jsonb_array_length(public.get_friends() -> 'friends') = 0,
-                   'データ削除で最初の状態に戻り、フレンドコードも新しくなる');
+                   'データ削除で最初の状態に戻る');
 select ewq_test.ok((public.get_ai_quota() ->> 'remainingToday')::integer = 0, 'データを削除しても AI の回数は戻らない');
 reset role;
 

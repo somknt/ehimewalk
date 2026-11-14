@@ -115,7 +115,7 @@ export function RankingPage() {
               {state.data.entries.length === 0 ? (
                 scope === 'friends' ? (
                   <div>
-                    <p className="text-ink-soft">まだフレンドがいません。フレンドコードで友だちを追加しよう！</p>
+                    <p className="text-ink-soft">まだフレンドがいません。フレンドIDで友だちを追加しよう！</p>
                     <Link to="/friends" className="rpg-button mt-3 w-full bg-seto-400">
                       フレンドを追加する
                     </Link>

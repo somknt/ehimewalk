@@ -155,11 +155,15 @@ export class SupabaseGameApi implements GameApi {
     await this.ensureAuth()
     const { data, error } = await this.client.rpc(fn, args)
     if (error) {
-      // ログインの期限切れ・ユーザーが消えた場合は、サインインし直して 1 回だけやり直す
+      // ログインの期限切れは、同じアカウントのまま取り直して 1 回だけやり直す（新しいアカウントにしない。フレンドIDが変わるため）。
+      // 取り直せない（アカウントが削除された）ときだけ、新しく匿名でサインインする
       const expired = error.code === 'PGRST301' || error.code === 'PGRST303' || (error.code === 'P0001' && error.message === 'not_authenticated')
       if (expired && !retried) {
-        await this.client.auth.signOut({ scope: 'local' }).catch(() => undefined)
-        this.authReady = null
+        const refreshed = await this.client.auth.refreshSession().catch(() => null)
+        if (!refreshed?.data.session) {
+          await this.client.auth.signOut({ scope: 'local' }).catch(() => undefined)
+          this.authReady = null
+        }
         return this.rpc<T>(fn, args, true)
       }
       throw toApiError(error)

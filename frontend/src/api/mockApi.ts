@@ -180,7 +180,7 @@ const FRIENDSHIP_STATUSES: readonly Friendship['status'][] = ['accepted', 'pendi
 export const MAX_FRIENDS = 100
 const FRIEND_CODE_PATTERN = new RegExp(`^[${FRIEND_CODE_CHARS}]{8}$`)
 
-/** 入力されたフレンドコードを正規化する（小文字・空白・ハイフンを許す） */
+/** 入力されたフレンドIDを正規化する（小文字・空白・ハイフンを許す） */
 export function normalizeFriendCode(input: string): string {
   return input.toUpperCase().replace(/[\s-]/g, '')
 }
@@ -1199,7 +1199,7 @@ export class MockGameApi implements GameApi {
   findUserByFriendCode(friendCode: string): Promise<FriendCandidate | null> {
     return this.simulateNetwork(() => {
       const code = normalizeFriendCode(isString(friendCode) ? friendCode : '')
-      if (!FRIEND_CODE_PATTERN.test(code)) throw invalid('フレンドコードは英数字8文字で入力してください。')
+      if (!FRIEND_CODE_PATTERN.test(code)) throw invalid('フレンドIDは英数字8文字で入力してください。')
       const db = this.loadDb()
       if (this.settleSampleRequests(db)) this.saveDb(db)
       if (code === db.profile.friendCode) {
@@ -1215,11 +1215,11 @@ export class MockGameApi implements GameApi {
   sendFriendRequest(friendCode: string): Promise<FriendsData> {
     return this.simulateNetwork(() => {
       const code = normalizeFriendCode(isString(friendCode) ? friendCode : '')
-      if (!FRIEND_CODE_PATTERN.test(code)) throw invalid('フレンドコードは英数字8文字で入力してください。')
+      if (!FRIEND_CODE_PATTERN.test(code)) throw invalid('フレンドIDは英数字8文字で入力してください。')
       const db = this.loadDb()
-      if (code === db.profile.friendCode) throw invalid('自分のフレンドコードです。')
+      if (code === db.profile.friendCode) throw invalid('自分のフレンドIDです。')
       const user = SAMPLE_USERS.find((u) => u.friendCode === code)
-      if (!user) throw new ApiError('このフレンドコードのユーザーは見つかりませんでした。', { code: 'not_found' })
+      if (!user) throw new ApiError('このフレンドIDのユーザーは見つかりませんでした。', { code: 'not_found' })
       const current = db.friendships[user.userId]
       const now = this.now().toISOString()
       if (current?.status === 'accepted') throw invalid('すでにフレンドです。')
@@ -1561,8 +1561,10 @@ export class MockGameApi implements GameApi {
           const windowStart = addDays(today, -(SYNC_WINDOW_DAYS - 1))
           // いまのデータは消して、作り直す（センサーの歩数も消す）
           provider.clear?.()
+          // ユーザー ID とフレンドIDは、作り直しても変えない
+          const previous = this.loadDb().profile
           const db = createInitialDb(now)
-          db.profile = { ...db.profile, username: SHOWCASE.username, onboarded: true }
+          db.profile = { ...db.profile, userId: previous.userId, friendCode: previous.friendCode, username: SHOWCASE.username, onboarded: true }
           db.character = {
             name: SHOWCASE.characterName,
             appearance: { ...SHOWCASE.appearance },

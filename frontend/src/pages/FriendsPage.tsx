@@ -50,7 +50,7 @@ function MyCodeCard({ code }: { code: string }) {
   }
   const share = async () => {
     try {
-      await navigator.share({ title: 'えひめウォーククエスト', text: `えひめウォーククエストでフレンドになろう！フレンドコード：${code}` })
+      await navigator.share({ title: 'えひめウォーククエスト', text: `えひめウォーククエストでフレンドになろう！フレンドID：${code}` })
     } catch {
       // 共有を取りやめた場合など
     }
@@ -59,8 +59,8 @@ function MyCodeCard({ code }: { code: string }) {
 
   return (
     <Card className="bg-mikan-50">
-      <CardTitle>あなたのフレンドコード</CardTitle>
-      <p className="text-center font-pixel text-4xl tracking-widest" aria-label={`フレンドコード ${code.split('').join(' ')}`}>
+      <CardTitle>あなたのフレンドID</CardTitle>
+      <p className="text-center font-pixel text-4xl tracking-widest" aria-label={`フレンドID ${code.split('').join(' ')}`}>
         {formatCode(code)}
       </p>
       <div className="mt-3 grid gap-2" style={{ gridTemplateColumns: canShare ? '1fr 1fr' : '1fr' }}>
@@ -73,7 +73,7 @@ function MyCodeCard({ code }: { code: string }) {
           </button>
         )}
       </div>
-      <p className="mt-2 text-xs text-ink-soft">このコードを友だちに伝えると、フレンド申請してもらえます。フレンドには名前・見た目・称号・週間歩数が見えます。位置情報や訪れた場所は見えません。</p>
+      <p className="mt-2 text-xs text-ink-soft">このIDはずっと変わりません。友だちに伝えると、IDで検索してフレンド申請してもらえます。フレンドには名前・見た目・称号・週間歩数が見えます。位置情報や訪れた場所は見えません。</p>
     </Card>
   )
 }
@@ -100,7 +100,7 @@ function AddFriendCard({ data, onChange }: { data: FriendsData; onChange: (data:
   }
   const error = search.error ?? request.error
   const relationLabel: Record<FriendCandidate['relation'], string> = {
-    self: 'あなたのフレンドコードです',
+    self: 'あなたのフレンドIDです',
     friend: 'すでにフレンドです',
     pending_sent: '申請中です（相手の承認待ち）',
     pending_received: 'この人から申請が届いています',
@@ -112,7 +112,7 @@ function AddFriendCard({ data, onChange }: { data: FriendsData; onChange: (data:
       <CardTitle>フレンドを追加</CardTitle>
       <form onSubmit={onSubmit} className="flex items-end gap-2">
         <label className="min-w-0 flex-1">
-          <span className="font-bold">友だちのフレンドコード</span>
+          <span className="font-bold">友だちのフレンドID</span>
           <input
             type="text"
             inputMode="text"
@@ -146,7 +146,7 @@ function AddFriendCard({ data, onChange }: { data: FriendsData; onChange: (data:
       )}
       {candidate === null && (
         <p role="status" className="mt-3 rounded-xl bg-cream p-3 text-sm">
-          このフレンドコードのユーザーは見つかりませんでした。コードを確かめてください。
+          このフレンドIDのユーザーは見つかりませんでした。IDを確かめてください。
         </p>
       )}
       {candidate && (
@@ -169,7 +169,7 @@ function AddFriendCard({ data, onChange }: { data: FriendsData; onChange: (data:
 
       {data.sampleCodes.length > 0 && (
         <details className="mt-3 text-sm">
-          <summary className="cursor-pointer py-1 font-bold text-seto-700">試しに使えるフレンドコード（モック）</summary>
+          <summary className="cursor-pointer py-1 font-bold text-seto-700">試しに使えるフレンドID（モック）</summary>
           <p className="mt-1 text-xs text-ink-soft">いまはAWS未接続のため、架空のサンプルユーザーとフレンドになれます。申請すると、数秒後に承認されます。</p>
           <ul className="mt-2 space-y-1">
             {data.sampleCodes.map((sample) => (
@@ -277,7 +277,7 @@ function FriendListCard({ data, onChange, onCheered }: { data: FriendsData; onCh
       <CardTitle aside={<span className="font-pixel">{data.friends.length} / {data.limit}</span>}>フレンド</CardTitle>
       {data.friends.length === 0 ? (
         <p className="rounded-xl bg-cream p-4 text-center text-ink-soft">
-          まだフレンドがいません。フレンドコードで友だちを追加して、いっしょに歩こう！
+          まだフレンドがいません。フレンドIDで友だちを追加して、いっしょに歩こう！
         </p>
       ) : (
         <ul className="space-y-2">

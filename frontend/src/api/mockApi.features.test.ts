@@ -292,9 +292,12 @@ describe('発表用のデモ用データ', () => {
     const api = createApi()
     await api.completeOnboarding(onboarding)
     await api.claimLoginBonus()
+    const before = (await api.getSession()).profile
     await api.demo!.prepareShowcase()
 
     const session = await api.getSession()
+    // フレンドIDとユーザー ID は変わらない
+    expect(session.profile).toMatchObject({ friendCode: before.friendCode, userId: before.userId })
     expect(session.profile).toMatchObject({ onboarded: true, username: 'デモユーザー' })
     expect(session.character.equipped).toMatchObject({ head: 'head_mikan_hat', pet: 'pet_koromikan' })
     const records = await api.getStepRecords('2026-11-05', TODAY)
