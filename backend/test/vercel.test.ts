@@ -9,7 +9,7 @@ import { loadConfig } from '../src/config'
 import { DynamoQuotaCounter, expiresAtFor, type DynamoClientLike } from '../src/limits/dynamoQuota'
 import { ProviderError } from '../src/quests/providers/types'
 import { createVercelHandler, readVisitorId, VISITOR_COOKIE, type VercelDeps } from '../src/vercel/handler'
-import { FAKE_KEY, NOW, converseToolResponse, goodAiAnswer, validRequest } from './helpers'
+import { FAKE_KEY, NOW, converseToolResponse, fakeFetch, goodAiAnswer, jsonResponse, validRequest } from './helpers'
 
 /** 条件付き書き込みを再現する偽の DynamoDB（メモリ上） */
 function fakeDynamo() {
@@ -195,9 +195,27 @@ describe('Vercel の関数（/api/...）', () => {
     expect((await readJson(res)).error.code).toBe('ai_disabled')
   })
 
-  it('Bedrock を使う設定でも、ロールと回数のテーブルがなければ無効にする（API キーだけでは動かさない）', async () => {
-    const call = await start({ env: { AI_PROVIDER: 'bedrock', AWS_BEARER_TOKEN_BEDROCK: FAKE_KEY, ALLOWED_ORIGIN: ORIGIN } })
+  it('Bedrock を使う設定で、ロールも API キーもなければ無効にする', async () => {
+    const call = await start({ env: { AI_PROVIDER: 'bedrock', ALLOWED_ORIGIN: ORIGIN } })
     expect((await call('/api/ai/quests/quota')).status).toBe(404)
+  })
+
+  it('ロールがなく API キーだけがあるときは、API キーで Bedrock を呼び、キーを応答に出さない', async () => {
+    const f = fakeFetch(() => jsonResponse(converseToolResponse(goodAiAnswer)))
+    const call = await start({
+      env: { AI_PROVIDER: 'bedrock', AWS_BEARER_TOKEN_BEDROCK: FAKE_KEY, ALLOWED_ORIGIN: ORIGIN },
+      fetch: f.fetch,
+    })
+    const quota = await call('/api/ai/quests/quota')
+    expect(await readJson(quota)).toMatchObject({ provider: 'bedrock', configured: true, remainingToday: 5 })
+    const res = await call('/api/ai/quests/generate', generate(cookieOf(quota)))
+    const text = await res.text()
+    expect(res.status).toBe(200)
+    expect(JSON.parse(text)).toMatchObject({ status: 'ok', remainingToday: 4, quest: { generatedBy: 'bedrock' } })
+    expect(text).not.toContain(FAKE_KEY)
+    expect(f.calls).toHaveLength(1)
+    expect(f.calls[0].url).toBe('https://bedrock-runtime.ap-northeast-1.amazonaws.com/model/jp.amazon.nova-2-lite-v1%3A0/converse')
+    expect((f.calls[0].init.headers as Record<string, string>).Authorization).toBe(`Bearer ${FAKE_KEY}`)
   })
 
   it('匿名の ID を HttpOnly の Cookie で発行し、ID ごとに回数を数える', async () => {

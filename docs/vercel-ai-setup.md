@@ -1,6 +1,35 @@
 # 公開版（Vercel）で AI 散策クエストを動かす設定
 
-公開版（https://ehime-walk.vercel.app/）の AI 散策クエストを動かすための、AWS と Vercel の設定手順です。
+公開版（https://ehime-walk.vercel.app/）の AI 散策クエストを動かす方法は 2 つあります。
+
+| | A. API キー（いま使っている方法） | B. OIDC（AWS の設定ができるとき） |
+|---|---|---|
+| 必要なもの | Bedrock の API キー | AWS の IAM・DynamoDB を設定できる権限 |
+| 設定する場所 | Vercel の環境変数だけ | AWS と Vercel |
+| 回数の上限 | 実行環境ごとのメモリで数える目安（実行環境が入れ替わると 0 に戻るため、上限を超えることがある） | DynamoDB で正確に数える |
+| キーの扱い | Vercel のサーバー側の環境変数に置く | 長期のキーを置かない |
+
+B の設定（AWS_ROLE_ARN と AI_QUEST_QUOTA_TABLE）があれば B を使い、API キーは無視します。
+
+## A. API キーで動かす
+
+プロジェクト `ehime-walk` → **Settings → Environment Variables** で、次の 3 つを追加する。**Environment は Production だけ**にチェックする。
+
+| 名前 | 値 | 備考 |
+| --- | --- | --- |
+| `AI_PROVIDER` | `bedrock` | |
+| `AWS_BEARER_TOKEN_BEDROCK` | Bedrock の API キー | **Sensitive** をオンにする。値はチャット・Git・ログに貼らない |
+| `ALLOWED_ORIGIN` | `https://ehime-walk.vercel.app` | 末尾に `/` を付けない |
+
+- 名前を `VITE_` で始めない（`VITE_` で始まる変数はブラウザに送られ、キーが漏れる）
+- 任意：`BEDROCK_MODEL_ID`（既定 `jp.amazon.nova-2-lite-v1:0`）、`AI_QUEST_GLOBAL_DAILY_LIMIT`（既定 `200`。A では実行環境ごとの値）
+- 保存したら **Deployments** → 最新の本番の **︙** → **Redeploy**（環境変数は次のデプロイから効く）
+- 確認：`https://ehime-walk.vercel.app/api/ai/quests/quota` を開き、`"provider":"bedrock"`、`"configured":true`、`"remainingToday":5` が出れば準備完了。そのあと「冒険 → AIクエスト」で 1 回提案させる
+- キーが漏れた・使われすぎたと思ったら、キーを発行した人にキーを無効にしてもらい、Vercel の環境変数を消して Redeploy する
+
+## B. OIDC で動かす
+
+以下は、AWS と Vercel の設定手順です。
 
 ## しくみ
 
@@ -13,7 +42,7 @@
 - **API キーはどこにも置きません。** Vercel の関数は、リクエストごとに Vercel が発行する OIDC トークンを AWS に渡し、IAM ロールの一時的な認証情報（15 分で切れる）と交換して Bedrock を呼びます（[Vercel の説明](https://vercel.com/docs/oidc/aws)）。
 - IAM ロールを引き受けられるのは、信頼ポリシーで指定した **Vercel のプロジェクト `ehime-walk` の本番（production）だけ**です。プレビューからは引き受けられません。
 - IAM ロールにできるのは、**指定した 2 つのモデルを呼ぶことと、回数のテーブルを読み書きすることだけ**です。
-- `AWS_BEARER_TOKEN_BEDROCK`（ローカル開発用の API キー）が Vercel に設定されていても、公開版では使いません。
+- B の設定があるときは、`AWS_BEARER_TOKEN_BEDROCK`（API キー）が Vercel に設定されていても使いません。
 - 回数は、サーバーが発行した匿名の ID（HttpOnly の Cookie）ごとに 1 日 5 回（`AI_QUEST_USER_DAILY_LIMIT`、最大 10）、アプリ全体で 1 日 200 回（`AI_QUEST_GLOBAL_DAILY_LIMIT`）まで数えます。ログインがないため、Cookie を消すと 1 人の 5 回はやり直せます。料金はアプリ全体の上限で抑えます。
 
 ## 必要なもの
@@ -135,7 +164,7 @@ AWS Budgets で月の予算（例：3 USD）を作り、実際の金額が 80% �
 | `BEDROCK_MODEL_ID`（任意） | 既定は `jp.amazon.nova-2-lite-v1:0` |
 | `AI_QUEST_GLOBAL_DAILY_LIMIT`（任意） | 既定は `200` |
 
-- **`AWS_BEARER_TOKEN_BEDROCK` は設定しない。** すでにあれば削除する。
+- **`AWS_BEARER_TOKEN_BEDROCK` は設定しない。** A から B に切り替えたときは削除する。
 - 任意：**Settings → Functions → Function Region** を **Tokyo（hnd1）** にすると、Bedrock までの通信が短くなる。
 
 環境変数は次のデプロイから効きます。`main` へのマージで自動で再デプロイされます（すでにマージ済みなら、Deployments から最新の本番を **Redeploy**）。

@@ -1,7 +1,11 @@
 // 公開版（Vercel Functions）の入り口。/api/ai/quests/* と /api/health を処理する。
-// 安全のための決まり：
-// - 長期の API キー（AWS_BEARER_TOKEN_BEDROCK）は、Vercel に設定されていても使わない
-// - Bedrock と DynamoDB へは、Vercel の OIDC トークンで引き受けた IAM ロールの一時的な認証情報で接続する
+// Bedrock への接続方法は 2 つ（上が優先）：
+// 1. OIDC：AWS_ROLE_ARN と AI_QUEST_QUOTA_TABLE があるとき。Vercel の OIDC トークンで IAM ロールを引き受け、
+//    一時的な認証情報で Bedrock と DynamoDB に接続する。回数は DynamoDB で正確に数える
+// 2. API キー：AWS_BEARER_TOKEN_BEDROCK だけがあるとき（AWS の設定ができない場合の簡単な方法）。
+//    回数は実行環境ごとのメモリで数えるため目安になる（実行環境が入れ替わると 0 に戻る）
+// その他の決まり：
+// - API キーは Vercel の環境変数（サーバー側）だけに置く。VITE_ で始まる変数には絶対に置かない
 // - AI_PROVIDER を設定していない Vercel プロジェクトでは、AI の機能を無効にする（画面は従来の提案に切り替わる）
 // - 利用者はサーバーが発行した匿名の ID（HttpOnly の Cookie）で見分ける。ログイン機能ができたらユーザー ID にする
 import { randomUUID } from 'node:crypto'
@@ -15,6 +19,7 @@ import type { HttpRequest, HttpResponse } from '../http/handler'
 import { BodyTooLargeError, collectHeaders, readBody, sendError, sendResponse } from '../http/node'
 import { DynamoQuotaCounter, type DynamoClientLike } from '../limits/dynamoQuota'
 import { MemoryQuotaStore, StoreQuotaCounter } from '../limits/quota'
+import type { FetchLike } from '../quests/providers/bedrock'
 import { errorKind, log } from '../log'
 
 export const VISITOR_COOKIE = 'ewq_aid'
@@ -25,6 +30,8 @@ export interface VercelDeps {
   env: Record<string, string | undefined>
   /** テスト用の差し替え（本番では AWS SDK のクライアントを作る） */
   aws?: { bedrock?: BedrockClientLike; dynamo?: DynamoClientLike; assumeRole?: AssumeRole }
+  /** テスト用：API キーの方式で Bedrock を呼ぶ fetch の差し替え */
+  fetch?: FetchLike
   now?: () => Date
   mockDelayMs?: number
 }
@@ -35,13 +42,10 @@ export function setupVercelApp(deps: VercelDeps): Setup {
   const { env } = deps
   const providerName = env.AI_PROVIDER?.trim()
   if (providerName !== 'bedrock' && providerName !== 'mock') return { ok: false, reason: 'ai_provider_not_set' }
-  if (env.AWS_BEARER_TOKEN_BEDROCK?.trim()) {
-    log.warn('api_key_ignored', { message: '公開版では API キーを使いません。Vercel の環境変数から AWS_BEARER_TOKEN_BEDROCK を削除してください。' })
-  }
 
   let config
   try {
-    config = { ...loadConfig({ ...env, AWS_BEARER_TOKEN_BEDROCK: undefined }), quotaFile: '' }
+    config = { ...loadConfig(env), quotaFile: '' }
   } catch (error) {
     log.error('config_error', { message: error instanceof ConfigError ? error.message : '設定を読み込めませんでした。' })
     return { ok: false, reason: 'config_error' }
@@ -53,12 +57,26 @@ export function setupVercelApp(deps: VercelDeps): Setup {
     return { ok: true, handle: app.handle }
   }
 
-  const { roleArn } = config.bedrock
+  const { roleArn, apiKey } = config.bedrock
   const table = config.quotaTable
   if (!roleArn || !table) {
-    log.warn('bedrock_not_configured', { roleArn: roleArn !== null, quotaTable: table !== null })
+    if (apiKey) {
+      // API キーの方式。回数は実行環境ごとのメモリで数える（目安）
+      log.warn('api_key_mode', { message: 'API キーで Bedrock に接続します。回数の上限は実行環境ごとの目安です。' })
+      const app = createApp({
+        config: { ...config, bedrock: { ...config.bedrock, roleArn: null } },
+        quotaCounter: new StoreQuotaCounter(new MemoryQuotaStore()),
+        fetchImpl: deps.fetch,
+        now: deps.now,
+      })
+      return { ok: true, handle: app.handle }
+    }
+    log.warn('bedrock_not_configured', { roleArn: roleArn !== null, quotaTable: table !== null, apiKey: false })
     return { ok: false, reason: 'not_configured' }
   }
+  // OIDC の方式では API キーを使わない（設定されていても無視する）
+  if (apiKey) log.warn('api_key_ignored', { message: 'OIDC の設定があるため、API キーは使いません。' })
+  config = { ...config, bedrock: { ...config.bedrock, apiKey: null } }
   const region = config.bedrock.region
   const credentials = vercelOidcCredentials({ assumeRole: deps.aws?.assumeRole ?? stsAssumeRole({ roleArn, region }) })
   const bedrock = deps.aws?.bedrock ?? createBedrockClient({ region, credentials })

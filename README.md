@@ -77,7 +77,7 @@ npm run dev
 
 `main` に push すると自動で公開されます。設定はリポジトリ直下の `vercel.json`（Root Directory を `frontend` にしたプロジェクトは `frontend/vercel.json`）にあります。ビルドでは `frontend` をビルドしたあと、`backend/scripts/build-vercel.mjs` が画面と AI の API（Vercel Functions）をまとめて `.vercel/output` に置きます（[Build Output API](https://vercel.com/docs/build-output-api)）。
 
-公開版の AI 散策クエストは、Vercel の OIDC 連携で AWS の IAM ロールを一時的に引き受けて Bedrock を呼びます。**Vercel にも GitHub にも API キーを置きません。** AWS と Vercel の設定手順は [docs/vercel-ai-setup.md](docs/vercel-ai-setup.md) にあります。設定していない Vercel のプロジェクトやプレビューでは、AI の API は無効になり、従来のブラウザ内の提案に自動で切り替わります。
+公開版の AI 散策クエストは、Vercel の環境変数（サーバー側）に置いた Bedrock の API キーで Bedrock を呼びます（A）。AWS の設定ができる場合は、Vercel の OIDC 連携で AWS の IAM ロールを一時的に引き受ける方式（B、長期のキーを置かない）にも切り替えられます。**GitHub には API キーを置きません。** 設定手順は [docs/vercel-ai-setup.md](docs/vercel-ai-setup.md) にあります。設定していない Vercel のプロジェクトやプレビューでは、AI の API は無効になり、従来のブラウザ内の提案に自動で切り替わります。
 
 ### AI 散策クエスト（backend）
 
@@ -98,7 +98,7 @@ npm run dev
 - Bedrock に接続するときは、`backend/.env` の `AI_PROVIDER=bedrock` と `AWS_BEARER_TOKEN_BEDROCK` を設定する。`frontend` の `.env` や `VITE_` で始まる変数には絶対に書かない
 - モデルは `BEDROCK_MODEL_ID`（`jp.amazon.nova-2-lite-v1:0` / `jp.anthropic.claude-haiku-5-5`）で切り替える
 - 利用制限：1 人 1 日 5 回（`AI_QUEST_USER_DAILY_LIMIT`、最大 10。日本時間で日付が変わると戻る）、アプリ全体の 1 日の上限、同時実行数、タイムアウト、`maxTokens`、同じ条件の結果は 10 分キャッシュ
-- ローカル開発では利用者を接続元（このPC）で数えるため、全員で 5 回を共有する。公開版（Vercel）では、サーバーが発行した匿名の ID（Cookie）ごとに数え、回数は DynamoDB に保存する
+- ローカル開発では利用者を接続元（このPC）で数えるため、全員で 5 回を共有する。公開版（Vercel）では、サーバーが発行した匿名の ID（Cookie）ごとに数える。API キーの方式（A）では回数を実行環境ごとのメモリで数えるため目安になり、OIDC の方式（B）では DynamoDB に保存して正確に数える
 - AI の API がない・未設定の環境（GitHub Pages、AI を設定していない Vercel のプロジェクトなど）では、従来のブラウザ内モックの画面を出す
 - テスト：`cd backend` → `npm test`（Bedrock には接続せず、偽の応答で確かめる）
 
