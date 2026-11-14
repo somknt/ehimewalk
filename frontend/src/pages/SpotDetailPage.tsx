@@ -95,7 +95,8 @@ function CheckInCard({
       >
         {checkIn.pending ? '位置を確認しています…' : '現在地でチェックインする'}
       </button>
-      {api.mode === 'mock' && (
+      {/* デモ用チェックインは、モックと、オンラインのデモ用アカウントだけ（サーバー側でも確かめる） */}
+      {(api.mode === 'mock' || api.demo !== null) && (
         <button
           type="button"
           onClick={() => void checkIn.run(true)}
@@ -117,7 +118,7 @@ function CheckInCard({
       )}
       <p className="mt-3 text-xs text-ink-soft">
         位置情報はボタンを押したときに1回だけ取得し、判定に使ったあとは保存しません。精度が{MAX_ACCEPTABLE_ACCURACY_M}mより悪いときは判定しません。
-        {api.mode === 'mock' && 'デモ用チェックインは、現地確認なしの記録として区別されます。'}
+        {(api.mode === 'mock' || api.demo !== null) && 'デモ用チェックインは、現地確認なしの記録として区別されます。'}
       </p>
     </Card>
   )

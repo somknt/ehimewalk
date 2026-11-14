@@ -16,7 +16,7 @@ import type {
   WalkingLoad,
 } from '../domain/types'
 
-export type ApiMode = 'mock' | 'aws'
+export type ApiMode = 'mock' | 'aws' | 'supabase'
 
 export interface StepSyncResult {
   source: StepSource

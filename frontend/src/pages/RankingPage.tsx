@@ -8,6 +8,9 @@ import { CharacterAvatar } from '../features/character/CharacterAvatar'
 import { CheerButtons } from '../features/friends/CheerButtons'
 import { useAsyncData } from '../hooks/useAsyncData'
 
+/** オンライン（Supabase）で、実際の利用者のランキングを表示しているか */
+const ONLINE = api.mode !== 'mock'
+
 const TABS: { id: RankingScope; label: string }[] = [
   { id: 'all', label: '全ユーザー' },
   { id: 'ehime', label: '愛媛県' },
@@ -70,7 +73,7 @@ function MyStatus({ result }: { result: RankingResult }) {
         <span className="ml-1 text-lg">歩</span>
       </p>
       {me.eligible ? (
-        <p className="mt-1 font-bold">正式ランキングに参加中です</p>
+        <p className="mt-1 font-bold">{ONLINE ? 'ランキングに参加中です（端末のセンサーで数えた推定の歩数）' : '正式ランキングに参加中です'}</p>
       ) : me.excludedReason === 'not_opted_in' ? (
         <p className="mt-1 text-sm">
           愛媛県ランキングに参加していません。<Link to="/mypage" className="font-bold text-seto-700 underline">マイページ</Link>
@@ -107,7 +110,7 @@ export function RankingPage() {
             <Card>
               <div className="mb-3 flex items-center justify-between gap-2">
                 <h2 className="font-pixel text-lg">{formatMonthDay(state.data.weekStart)}（月）からの週間歩数</h2>
-                <Badge tone="gray">サンプル表示</Badge>
+                {!ONLINE && <Badge tone="gray">サンプル表示</Badge>}
               </div>
               {state.data.entries.length === 0 ? (
                 scope === 'friends' ? (
@@ -128,7 +131,10 @@ export function RankingPage() {
                 </ol>
               )}
               <p className="mt-3 text-xs text-ink-soft">
-                いまはAWS未接続のため、表示確認用の架空のサンプルユーザーを表示しています。位置情報や訪問先はランキングに表示しません。
+                {ONLINE
+                  ? '端末のセンサーで数えた歩数（推定値）で並べています。デモ操作で追加した歩数は入りません。'
+                  : 'いまはAWS未接続のため、表示確認用の架空のサンプルユーザーを表示しています。'}
+                位置情報や訪問先はランキングに表示しません。
               </p>
             </Card>
           </div>

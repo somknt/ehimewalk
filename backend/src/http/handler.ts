@@ -55,7 +55,7 @@ export function createHandler(deps: { config: ServerConfig; service: QuestServic
     const cors: Record<string, string> = origin ? { 'Access-Control-Allow-Origin': origin, Vary: 'Origin' } : {}
 
     if (request.method === 'OPTIONS') {
-      return { status: 204, headers: { ...cors, 'Access-Control-Allow-Methods': 'GET, POST', 'Access-Control-Allow-Headers': 'Content-Type' }, body: '' }
+      return { status: 204, headers: { ...cors, 'Access-Control-Allow-Methods': 'GET, POST', 'Access-Control-Allow-Headers': 'Content-Type, Authorization' }, body: '' }
     }
 
     const withCors = (response: HttpResponse): HttpResponse => ({ ...response, headers: { ...response.headers, ...cors } })

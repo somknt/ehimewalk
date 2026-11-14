@@ -617,7 +617,7 @@ export function walkingBudgetMinutes(average7Days: number): number {
   return 60
 }
 
-interface SuggestionOptions {
+export interface SuggestionOptions {
   questId: string
   startLabel: string
   origin: { latitude: number; longitude: number } | null
@@ -628,7 +628,7 @@ interface SuggestionOptions {
 }
 
 /** 規則で選んだ訪問先から、画面に出すクエストを作る（モック。AI 接続後は文章を AI に作らせる） */
-function toSuggestion(plan: QuestPlan, options: SuggestionOptions): QuestSuggestion {
+export function toSuggestion(plan: QuestPlan, options: SuggestionOptions): QuestSuggestion {
   const first = plan.spots[0]
   const interestLabel = options.interests[0] ?? 'ぶらり'
   const legBySpot = new Map(plan.legs.map((leg) => [leg.toSpotId, leg.estimatedM]))

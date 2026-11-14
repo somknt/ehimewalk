@@ -1,6 +1,7 @@
 // AI 散策クエストの API（backend）の呼び出し。Bedrock の API キーはブラウザに置かない：
 // ブラウザ → backend（/api/ai/quests/...）→ Amazon Bedrock の順に呼ぶ。
 // 開発中は Vite が /api を backend（http://127.0.0.1:8787）へ中継する（vite.config.ts）。
+import { supabase } from '../lib/supabase'
 import { ApiError } from './types'
 
 /**
@@ -80,10 +81,25 @@ const CONNECT_ERROR = import.meta.env.DEV
 /** ブラウザ側の待ち時間の上限（backend 側のタイムアウトより少し長くする） */
 const CLIENT_TIMEOUT_MS = 30_000
 
+/**
+ * オンライン（Supabase）のときは、ログイン中のアクセストークンを付ける。
+ * サーバーはこのトークンを Supabase で確かめて利用者を決め、回数を Supabase で数える
+ */
+async function authHeaders(): Promise<Record<string, string>> {
+  if (!supabase || import.meta.env.VITE_API_MODE !== 'supabase') return {}
+  try {
+    const token = (await supabase.auth.getSession()).data.session?.access_token
+    return token ? { Authorization: `Bearer ${token}` } : {}
+  } catch {
+    return {}
+  }
+}
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   let response: Response
   try {
-    response = await fetch(`${BASE_URL}${path}`, { ...init, signal: AbortSignal.timeout(CLIENT_TIMEOUT_MS) })
+    const headers = { ...(init.headers as Record<string, string> | undefined), ...(await authHeaders()) }
+    response = await fetch(`${BASE_URL}${path}`, { ...init, headers, signal: AbortSignal.timeout(CLIENT_TIMEOUT_MS) })
   } catch {
     throw new AiQuestError(CONNECT_ERROR, 'network')
   }

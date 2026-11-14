@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto'
 import type { ServerConfig } from '../config'
 import { TtlCache, cacheKey } from '../limits/cache'
 import { ConcurrencyLimiter } from '../limits/concurrency'
-import { QuotaManager, hashIdentity, type QuotaCounter } from '../limits/quota'
+import { QuotaManager, hashIdentity, type QuotaCounter, type QuotaLike } from '../limits/quota'
 import { errorKind, log } from '../log'
 import {
   buildRouteFromSpotIds,
@@ -29,13 +29,15 @@ export interface QuestServiceDeps {
   config: ServerConfig
   provider: AiQuestProvider
   quotaCounter: QuotaCounter
+  /** 回数の管理を差し替える（Supabase で数えるとき）。省略時は quotaCounter で数える */
+  quota?: QuotaLike
   now?: () => Date
 }
 
 export class QuestService {
   private readonly config: ServerConfig
   private readonly provider: AiQuestProvider
-  private readonly quota: QuotaManager
+  private readonly quota: QuotaLike
   private readonly cache: TtlCache<GeneratedQuest>
   private readonly limiter: ConcurrencyLimiter
   private readonly now: () => Date
@@ -44,12 +46,14 @@ export class QuestService {
     this.config = deps.config
     this.provider = deps.provider
     this.now = deps.now ?? (() => new Date())
-    this.quota = new QuotaManager({
-      counter: deps.quotaCounter,
-      userLimit: deps.config.limits.userDailyLimit,
-      globalLimit: deps.config.limits.globalDailyLimit,
-      today: () => toJstDateKey(this.now()),
-    })
+    this.quota =
+      deps.quota ??
+      new QuotaManager({
+        counter: deps.quotaCounter,
+        userLimit: deps.config.limits.userDailyLimit,
+        globalLimit: deps.config.limits.globalDailyLimit,
+        today: () => toJstDateKey(this.now()),
+      })
     this.cache = new TtlCache({ ttlMs: deps.config.limits.cacheTtlMs, now: () => this.now().getTime() })
     this.limiter = new ConcurrencyLimiter(deps.config.limits.maxConcurrency)
   }
@@ -208,6 +212,14 @@ export class QuestService {
         createdAt: this.now().toISOString(),
       }
       this.cache.set(key, quest)
+      // 提案したクエストを記録する（Supabase のとき。チェックインの「AI 経由」の判定と効果検証に使う）
+      await reservation.commit?.({
+        questId: quest.questId,
+        title: quest.title,
+        spotIds: quest.spots.map((spot) => spot.spotId),
+        model: quest.model,
+        generatedBy: quest.generatedBy,
+      })
       log.info('ai_quest_generated', {
         provider: this.provider.name,
         model: this.provider.model,

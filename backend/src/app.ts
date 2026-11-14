@@ -1,7 +1,7 @@
 // 設定から、AI の呼び出し口・回数管理・HTTP の処理を組み立てる（ローカルサーバー・Vercel・テストで共通）。
 import { isBedrockConfigured, type ServerConfig } from './config'
 import { createHandler } from './http/handler'
-import { FileQuotaStore, MemoryQuotaStore, StoreQuotaCounter, type QuotaCounter, type QuotaStore } from './limits/quota'
+import { FileQuotaStore, MemoryQuotaStore, StoreQuotaCounter, type QuotaCounter, type QuotaLike, type QuotaStore } from './limits/quota'
 import { log, registerSecret } from './log'
 import { ApiKeyTransport, BedrockQuestProvider, type ConverseTransport, type FetchLike } from './quests/providers/bedrock'
 import { MockQuestProvider } from './quests/providers/mock'
@@ -12,6 +12,8 @@ export interface AppOptions {
   config: ServerConfig
   /** 回数を数える場所。省略時は設定に応じてファイルかメモリ */
   quotaCounter?: QuotaCounter
+  /** 回数の管理そのものを差し替える（Supabase で数えるとき） */
+  quota?: QuotaLike
   quotaStore?: QuotaStore
   provider?: AiQuestProvider
   /** Bedrock への送信の方法。省略時は API キー（ローカル開発） */
@@ -40,6 +42,6 @@ export function createApp(options: AppOptions) {
   const quotaCounter =
     options.quotaCounter ??
     new StoreQuotaCounter(options.quotaStore ?? (config.quotaFile ? new FileQuotaStore(config.quotaFile) : new MemoryQuotaStore()))
-  const service = new QuestService({ config, provider, quotaCounter, now: options.now })
+  const service = new QuestService({ config, provider, quotaCounter, quota: options.quota, now: options.now })
   return { service, handle: createHandler({ config, service }) }
 }

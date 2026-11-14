@@ -104,10 +104,22 @@ export class StoreQuotaCounter implements QuotaCounter {
 }
 
 export type ReserveResult =
-  | { ok: true; remaining: number; release: () => Promise<void> }
+  | {
+      ok: true
+      remaining: number
+      release: () => Promise<void>
+      /** 提案ができたときに呼ぶ（Supabase では提案したクエストを記録する。チェックインの「AI 経由」の判定に使う） */
+      commit?: (quest: { questId: string; title: string; spotIds: string[]; model: string | null; generatedBy: 'mock' | 'bedrock' }) => Promise<void>
+    }
   | { ok: false; reason: 'user_limit' | 'global_limit'; remaining: number }
 
-export class QuotaManager {
+/** 回数の管理（QuotaManager か、Supabase で数える SupabaseQuota） */
+export interface QuotaLike {
+  remaining(identity: string): Promise<number>
+  reserve(identity: string): Promise<ReserveResult>
+}
+
+export class QuotaManager implements QuotaLike {
   private readonly counter: QuotaCounter
   private readonly userLimit: number
   private readonly globalLimit: number

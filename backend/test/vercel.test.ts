@@ -293,3 +293,127 @@ describe('設定', () => {
     expect(loadConfig({ ALLOWED_ORIGIN: 'https://a.example, https://b.example/' }).allowedOrigins).toEqual(['https://a.example', 'https://b.example'])
   })
 })
+
+describe('Supabase で回数を数える（SUPABASE_URL・SUPABASE_SECRET_KEY）', () => {
+  const ORIGIN = 'https://ehime-walk.vercel.app'
+  const SUPABASE = 'https://example.supabase.co'
+  const SECRET = 'sb_secret_test_fake_key_0123456789'
+  const USER = '7b0c6b9e-1f2a-4c3d-8e4f-5a6b7c8d9e0f'
+  const TOKEN = 'header.payload.signature-of-a-valid-user-token'
+  let server: Server | null = null
+  afterEach(async () => {
+    await new Promise<void>((resolve) => (server ? server.close(() => resolve()) : resolve()))
+    server = null
+  })
+
+  /** Supabase の偽物（Auth の確認と RPC）。1 人 1 日 5 回を数える */
+  function fakeSupabase() {
+    const calls: { url: string; headers: Record<string, string>; body: unknown }[] = []
+    let used = 0
+    const reservations = new Map<string, string>()
+    const supabaseFetch = async (url: string, init: RequestInit) => {
+      const headers = init.headers as Record<string, string>
+      const body = init.body ? JSON.parse(String(init.body)) : null
+      calls.push({ url, headers, body })
+      if (url === `${SUPABASE}/auth/v1/user`) {
+        return headers.Authorization === `Bearer ${TOKEN}` ? jsonResponse({ id: USER }) : jsonResponse({ message: 'invalid' }, 401)
+      }
+      const name = url.replace(`${SUPABASE}/rest/v1/rpc/`, '')
+      if (name === 'ai_quota_status') return jsonResponse({ remainingToday: 5 - used, dailyLimit: 5 })
+      if (name === 'ai_quota_reserve') {
+        if (used >= 5) return jsonResponse({ ok: false, reason: 'user_limit', remainingToday: 0 })
+        used += 1
+        const id = `res-${used}`
+        reservations.set(id, 'reserved')
+        return jsonResponse({ ok: true, reservationId: id, remainingToday: 5 - used })
+      }
+      if (name === 'ai_quota_commit') {
+        reservations.set(body.p_reservation_id, 'committed')
+        return jsonResponse(true)
+      }
+      if (name === 'ai_quota_release') {
+        const ok = reservations.get(body.p_reservation_id) === 'reserved'
+        if (ok) {
+          reservations.set(body.p_reservation_id, 'released')
+          used -= 1
+        }
+        return jsonResponse(ok)
+      }
+      return jsonResponse({ message: 'unknown' }, 404)
+    }
+    return { calls, supabaseFetch, reservations }
+  }
+
+  async function start(deps: VercelDeps) {
+    const handler = createVercelHandler({ now: () => NOW, mockDelayMs: 0, ...deps })
+    server = createServer((req, res) => void handler(req, res))
+    await new Promise<void>((resolve) => server!.listen(0, '127.0.0.1', resolve))
+    const base = `http://127.0.0.1:${(server!.address() as AddressInfo).port}`
+    return (path: string, init: RequestInit = {}) => fetch(base + path, init)
+  }
+  const env = { AI_PROVIDER: 'mock', ALLOWED_ORIGIN: ORIGIN, SUPABASE_URL: SUPABASE, SUPABASE_SECRET_KEY: SECRET }
+  const post = (token?: string) => ({
+    method: 'POST',
+    headers: { 'content-type': 'application/json', origin: ORIGIN, ...(token ? { authorization: `Bearer ${token}` } : {}) },
+    body: JSON.stringify(validRequest),
+  })
+
+  it('ログインしていない・トークンが偽物なら使えない（Cookie の ID も発行しない）', async () => {
+    const sb = fakeSupabase()
+    const call = await start({ env, supabaseFetch: sb.supabaseFetch })
+    const none = await call('/api/ai/quests/quota')
+    expect(none.status).toBe(401)
+    expect(((await none.json()) as { error: { code: string } }).error.code).toBe('login_required')
+    expect(none.headers.get('set-cookie')).toBeNull()
+    const fake = await call('/api/ai/quests/generate', post('header.payload.this-token-is-not-valid-at-all'))
+    expect(fake.status).toBe(401)
+    expect(sb.calls.filter((c) => c.url.includes('/rpc/'))).toHaveLength(0)
+  })
+
+  it('トークンを確かめたユーザーで回数を予約し、提案したクエストを記録する', async () => {
+    const sb = fakeSupabase()
+    const call = await start({ env, supabaseFetch: sb.supabaseFetch })
+    const status = await call('/api/ai/quests/quota', { headers: { authorization: `Bearer ${TOKEN}` } })
+    expect(await status.json()).toMatchObject({ remainingToday: 5, dailyLimit: 5 })
+    const res = await call('/api/ai/quests/generate', post(TOKEN))
+    const text = await res.text()
+    expect(res.status).toBe(200)
+    expect(JSON.parse(text)).toMatchObject({ status: 'ok', remainingToday: 4 })
+    const reserve = sb.calls.find((c) => c.url.endsWith('/rpc/ai_quota_reserve'))!
+    expect(reserve.body).toEqual({ p_user_id: USER, p_global_limit: 200 })
+    const commit = sb.calls.find((c) => c.url.endsWith('/rpc/ai_quota_commit'))!
+    expect(commit.body).toMatchObject({ p_reservation_id: 'res-1', p_quest_id: JSON.parse(text).quest.questId, p_generated_by: 'mock' })
+    expect((commit.body as { p_spot_ids: string[] }).p_spot_ids.length).toBeGreaterThan(0)
+    // 秘密のキーは apikey ヘッダーだけで送り、応答には出さない。RPC には Authorization を付けない
+    expect(sb.calls.every((c) => c.headers.apikey === SECRET)).toBe(true)
+    expect(sb.calls.filter((c) => c.url.includes('/rpc/')).every((c) => c.headers.Authorization === undefined)).toBe(true)
+    expect(text).not.toContain(SECRET)
+  })
+
+  it('1日5回を超えると AI を呼ばずに断る', async () => {
+    const sb = fakeSupabase()
+    const call = await start({ env: { ...env, AI_QUEST_CACHE_TTL_SECONDS: '0' }, supabaseFetch: sb.supabaseFetch })
+    for (let i = 0; i < 5; i++) expect((await call('/api/ai/quests/generate', post(TOKEN))).status).toBe(200)
+    const over = await call('/api/ai/quests/generate', post(TOKEN))
+    expect(over.status).toBe(429)
+    expect(((await over.json()) as { error: unknown }).error).toMatchObject({ code: 'quota_exceeded', remainingToday: 0 })
+  })
+
+  it('Bedrock が失敗したときは予約を取り消す', async () => {
+    const sb = fakeSupabase()
+    const failing = fakeFetch(() => jsonResponse({ message: 'error' }, 500))
+    const call = await start({
+      env: { ...env, AI_PROVIDER: 'bedrock', AWS_BEARER_TOKEN_BEDROCK: FAKE_KEY },
+      fetch: failing.fetch,
+      supabaseFetch: sb.supabaseFetch,
+    })
+    const res = await call('/api/ai/quests/generate', post(TOKEN))
+    expect(res.status).toBe(502)
+    expect(sb.reservations.get('res-1')).toBe('released')
+  })
+
+  it('公開用のキーを秘密のキーの欄に入れたときは AI を無効にする', async () => {
+    const call = await start({ env: { ...env, SUPABASE_SECRET_KEY: 'sb_publishable_wrong_key_0123456789' } })
+    expect((await call('/api/ai/quests/quota')).status).toBe(404)
+  })
+})
