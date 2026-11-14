@@ -1,7 +1,7 @@
 // AI の利用回数の管理（日本時間の日付ごと）。
 // - 1 ユーザーの上限と、アプリ全体の上限の両方を数える
 // - 「予約 → 呼び出し → 結果に応じて確定 / 取り消し」の順で使い、上限を超える呼び出しは AI を呼ぶ前に止める
-// - 公開運用では Cognito のユーザー ID と DynamoDB（共有ストレージ）での管理が必須。これはローカル開発用
+// - 数える場所（QuotaCounter）は差し替えられる：ローカル開発はファイル、公開版（Vercel）は DynamoDB（dynamoQuota.ts）
 import { createHash } from 'node:crypto'
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
@@ -55,63 +55,96 @@ export function hashIdentity(identity: string): string {
   return createHash('sha256').update(`ewq-ai-quota:${identity}`).digest('hex').slice(0, 24)
 }
 
+export type CountResult = 'ok' | 'user_limit' | 'global_limit'
+
+/** 回数を数える場所。increment は「上限の確認と加算」を 1 回の操作で行い、同時に呼ばれても上限を超えない */
+export interface QuotaCounter {
+  used(date: string, userKey: string): Promise<number>
+  increment(date: string, userKey: string, limits: { user: number; global: number }): Promise<CountResult>
+  /** increment を取り消す（その日付の回数だけを戻す） */
+  decrement(date: string, userKey: string): Promise<void>
+}
+
+/** QuotaStore（メモリ・ファイル）で数える。1 つのプロセスの中だけで使う（ローカル開発・テスト用） */
+export class StoreQuotaCounter implements QuotaCounter {
+  private readonly store: QuotaStore
+  constructor(store: QuotaStore) {
+    this.store = store
+  }
+
+  private state(date: string): QuotaState {
+    const saved = this.store.load()
+    return saved && saved.date === date ? saved : { date, global: 0, users: {} }
+  }
+
+  async used(date: string, userKey: string) {
+    return this.state(date).users[userKey] ?? 0
+  }
+
+  // 読み込み〜保存の間に await を挟まないので、同じプロセスの中では同時に呼ばれても上限を超えない
+  async increment(date: string, userKey: string, limits: { user: number; global: number }): Promise<CountResult> {
+    const state = this.state(date)
+    const used = state.users[userKey] ?? 0
+    if (used >= limits.user) return 'user_limit'
+    if (state.global >= limits.global) return 'global_limit'
+    state.users[userKey] = used + 1
+    state.global += 1
+    this.store.save(state)
+    return 'ok'
+  }
+
+  async decrement(date: string, userKey: string) {
+    const saved = this.store.load()
+    // 日付が変わっていたら戻さない（新しい日の回数を減らさないため）
+    if (!saved || saved.date !== date) return
+    saved.users[userKey] = Math.max(0, (saved.users[userKey] ?? 1) - 1)
+    saved.global = Math.max(0, saved.global - 1)
+    this.store.save(saved)
+  }
+}
+
 export type ReserveResult =
-  | { ok: true; remaining: number; release: () => void }
+  | { ok: true; remaining: number; release: () => Promise<void> }
   | { ok: false; reason: 'user_limit' | 'global_limit'; remaining: number }
 
 export class QuotaManager {
-  private readonly store: QuotaStore
+  private readonly counter: QuotaCounter
   private readonly userLimit: number
   private readonly globalLimit: number
   private readonly today: () => string
 
-  constructor(options: { store: QuotaStore; userLimit: number; globalLimit: number; today: () => string }) {
-    this.store = options.store
+  constructor(options: { counter: QuotaCounter; userLimit: number; globalLimit: number; today: () => string }) {
+    this.counter = options.counter
     this.userLimit = options.userLimit
     this.globalLimit = options.globalLimit
     this.today = options.today
   }
 
-  /** 今日の状態（日付が変わっていたら 0 から） */
-  private current(): QuotaState {
-    const date = this.today()
-    const saved = this.store.load()
-    return saved && saved.date === date ? saved : { date, global: 0, users: {} }
-  }
-
-  remaining(identity: string): number {
-    const used = this.current().users[hashIdentity(identity)] ?? 0
+  async remaining(identity: string): Promise<number> {
+    const used = await this.counter.used(this.today(), hashIdentity(identity))
     return Math.max(0, this.userLimit - used)
   }
 
   /**
-   * 1 回分を予約する。読み込み〜保存の間に await を挟まないので、同時に呼ばれても上限を超えない。
+   * 1 回分を予約する。
    * release() は、AI に請求されていない失敗（未設定・Bedrock が拒否した等）のときに呼び、回数を戻す
    */
-  reserve(identity: string): ReserveResult {
+  async reserve(identity: string): Promise<ReserveResult> {
     const key = hashIdentity(identity)
-    const state = this.current()
-    const used = state.users[key] ?? 0
-    if (used >= this.userLimit) return { ok: false, reason: 'user_limit', remaining: 0 }
-    if (state.global >= this.globalLimit) return { ok: false, reason: 'global_limit', remaining: this.userLimit - used }
-    state.users[key] = used + 1
-    state.global += 1
-    this.store.save(state)
+    const date = this.today()
+    const result = await this.counter.increment(date, key, { user: this.userLimit, global: this.globalLimit })
+    if (result === 'user_limit') return { ok: false, reason: 'user_limit', remaining: 0 }
+    const used = await this.counter.used(date, key)
+    if (result === 'global_limit') return { ok: false, reason: 'global_limit', remaining: Math.max(0, this.userLimit - used) }
 
     let released = false
-    const reservedDate = state.date
     return {
       ok: true,
-      remaining: this.userLimit - used - 1,
-      release: () => {
+      remaining: Math.max(0, this.userLimit - used),
+      release: async () => {
         if (released) return
         released = true
-        const now = this.current()
-        // 日付をまたいだ予約は戻さない（新しい日の回数を減らさないため）
-        if (now.date !== reservedDate) return
-        now.users[key] = Math.max(0, (now.users[key] ?? 1) - 1)
-        now.global = Math.max(0, now.global - 1)
-        this.store.save(now)
+        await this.counter.decrement(date, key)
       },
     }
   }

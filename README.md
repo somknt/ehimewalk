@@ -8,7 +8,7 @@ AI × 健康増進 × 観光活性化 × ゲーミフィケーションのウォ
 
 ## 現在の状態
 
-Web アプリとして動きます（Vercel で公開）。AWS には未接続で、データはブラウザ内のモック API（端末の localStorage）に保存します。AI の提案は、登録スポットから規則で選ぶモックです（画面に「モック」と表示）。進み具合は [tasks.md](.kiro/specs/ehime-walk-quest/tasks.md) を参照してください。
+Web アプリとして動きます（Vercel で公開）。データはブラウザ内のモック API（端末の localStorage）に保存します。AI 散策クエストは Amazon Bedrock で提案を作ります（AI を設定していない環境では、登録スポットから規則で選ぶモックに切り替わり、画面に「モック」と表示）。進み具合は [tasks.md](.kiro/specs/ehime-walk-quest/tasks.md) を参照してください。
 
 ## ドキュメント
 
@@ -75,7 +75,9 @@ npm run dev
 
 ### 公開（Vercel）
 
-`main` に push すると自動で公開されます。設定はリポジトリ直下の `vercel.json`（`frontend` をビルドして `frontend/dist` を配信、どの URL でも `index.html` を返す）にあります。
+`main` に push すると自動で公開されます。設定はリポジトリ直下の `vercel.json`（Root Directory を `frontend` にしたプロジェクトは `frontend/vercel.json`）にあります。ビルドでは `frontend` をビルドしたあと、`backend/scripts/build-vercel.mjs` が画面と AI の API（Vercel Functions）をまとめて `.vercel/output` に置きます（[Build Output API](https://vercel.com/docs/build-output-api)）。
+
+公開版の AI 散策クエストは、Vercel の OIDC 連携で AWS の IAM ロールを一時的に引き受けて Bedrock を呼びます。**Vercel にも GitHub にも API キーを置きません。** AWS と Vercel の設定手順は [docs/vercel-ai-setup.md](docs/vercel-ai-setup.md) にあります。設定していない Vercel のプロジェクトやプレビューでは、AI の API は無効になり、従来のブラウザ内の提案に自動で切り替わります。
 
 ### AI 散策クエスト（backend）
 
@@ -96,8 +98,8 @@ npm run dev
 - Bedrock に接続するときは、`backend/.env` の `AI_PROVIDER=bedrock` と `AWS_BEARER_TOKEN_BEDROCK` を設定する。`frontend` の `.env` や `VITE_` で始まる変数には絶対に書かない
 - モデルは `BEDROCK_MODEL_ID`（`jp.amazon.nova-2-lite-v1:0` / `jp.anthropic.claude-haiku-5-5`）で切り替える
 - 利用制限：1 人 1 日 5 回（`AI_QUEST_USER_DAILY_LIMIT`、最大 10。日本時間で日付が変わると戻る）、アプリ全体の 1 日の上限、同時実行数、タイムアウト、`maxTokens`、同じ条件の結果は 10 分キャッシュ
-- ローカル開発では利用者を接続元（このPC）で数えるため、全員で 5 回を共有する。公開運用には、ログイン（Cognito）と共有ストレージでの回数管理が必須
-- backend がない公開版（GitHub Pages など）では、従来のブラウザ内モックの画面を出す
+- ローカル開発では利用者を接続元（このPC）で数えるため、全員で 5 回を共有する。公開版（Vercel）では、サーバーが発行した匿名の ID（Cookie）ごとに数え、回数は DynamoDB に保存する
+- AI の API がない・未設定の環境（GitHub Pages、AI を設定していない Vercel のプロジェクトなど）では、従来のブラウザ内モックの画面を出す
 - テスト：`cd backend` → `npm test`（Bedrock には接続せず、偽の応答で確かめる）
 
 ### モックについて
@@ -119,6 +121,10 @@ frontend/                      React + TypeScript + Vite + Tailwind CSS
   src/data/                    スポット・アイテムのマスタ
   src/features/                画面の部品（歩数計・地図・ガチャ・クエストなど）
   src/pages/                   画面
+backend/                       AI 散策クエストの API（ローカル開発サーバーと Vercel Functions で共通）
+  src/vercel/                  Vercel Functions の入り口
+  src/aws/                     公開版の AWS 接続（OIDC の一時的な認証情報、AWS SDK）
+  scripts/build-vercel.mjs     Vercel に配置する形（.vercel/output）を作る
 vercel.json                    Vercel の公開設定
 ```
 

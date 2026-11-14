@@ -16,3 +16,5 @@ cdk.out/
 .DS_Store
 Thumbs.db
 .idea/
+# Vercel のビルド出力（backend/scripts/build-vercel.mjs が作る）
+.vercel/

@@ -17,7 +17,8 @@ export interface HttpRequest {
   body: string
   /**
    * 利用者の識別子。サーバー側で決める（クライアントが送る値は使わない）。
-   * ローカル開発では接続元の IP アドレス、公開運用では Cognito のユーザー ID にする
+   * ローカル開発では接続元の IP アドレス、公開版（Vercel）ではサーバーが発行した匿名の ID（Cookie）。
+   * ログイン機能ができたら、そのユーザー ID にする
    */
   identity: string
 }
@@ -48,10 +49,10 @@ export function createHandler(deps: { config: ServerConfig; service: QuestServic
   return async function handle(request: HttpRequest): Promise<HttpResponse> {
     const origin = request.headers.origin
     // ほかのサイトからの呼び出し（回数を勝手に使われる）を防ぐ。Origin があるときは許可した配信元だけ
-    if (origin && origin !== config.allowedOrigin) {
+    if (origin && !config.allowedOrigins.includes(origin)) {
       return errorBody(403, 'forbidden_origin', 'このページからは利用できません。')
     }
-    const cors: Record<string, string> = origin ? { 'Access-Control-Allow-Origin': config.allowedOrigin, Vary: 'Origin' } : {}
+    const cors: Record<string, string> = origin ? { 'Access-Control-Allow-Origin': origin, Vary: 'Origin' } : {}
 
     if (request.method === 'OPTIONS') {
       return { status: 204, headers: { ...cors, 'Access-Control-Allow-Methods': 'GET, POST', 'Access-Control-Allow-Headers': 'Content-Type' }, body: '' }
@@ -64,7 +65,12 @@ export function createHandler(deps: { config: ServerConfig; service: QuestServic
     }
 
     if (request.path === '/api/ai/quests/quota' && request.method === 'GET') {
-      return withCors(json(200, service.status(request.identity)))
+      try {
+        return withCors(json(200, await service.status(request.identity)))
+      } catch (error) {
+        log.error('unexpected_error', { kind: errorKind(error), path: request.path })
+        return withCors(errorBody(503, 'service_unavailable', 'AIの機能を一時的に利用できません。時間をおいて、もう一度お試しください。'))
+      }
     }
 
     if (request.path === '/api/ai/quests/generate') {
@@ -85,7 +91,7 @@ export function createHandler(deps: { config: ServerConfig; service: QuestServic
         return withCors(json(200, result))
       } catch (error) {
         if (error instanceof QuestError) {
-          const remaining = error.remainingToday ?? service.status(request.identity).remainingToday
+          const remaining = error.remainingToday ?? (await service.status(request.identity).catch(() => undefined))?.remainingToday
           return withCors(errorBody(error.status, error.code, error.message, remaining))
         }
         // 想定外のエラーの詳細は返さない（ログにも種類だけを残す）

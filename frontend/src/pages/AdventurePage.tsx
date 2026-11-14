@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { api } from '../api'
 import { PixelArt } from '../components/PixelArt'
@@ -8,7 +8,7 @@ import { getItem } from '../data/items'
 import { SPOTS } from '../data/spots'
 import { distanceMeters } from '../domain/geo'
 import type { Visit } from '../domain/types'
-import { AI_QUEST_API_AVAILABLE } from '../api/aiQuestClient'
+import { checkAiQuestApi } from '../api/aiQuestClient'
 import { useLocationPermission, type LocationPermission } from '../features/geo/useLocationPermission'
 import type { MapPosition } from '../features/map/SpotMap'
 import { SPOT_OBJECT_SIZE, spotObject } from '../features/map/spotObjects'
@@ -88,6 +88,22 @@ function SpotList({
       ))}
     </ul>
   )
+}
+
+/** AI の API（backend）が使える環境では Bedrock 経由の提案、使えない環境では従来のブラウザ内の提案 */
+function QuestTab() {
+  const [aiAvailable, setAiAvailable] = useState<boolean | null>(null)
+  useEffect(() => {
+    let ignore = false
+    void checkAiQuestApi().then((available) => {
+      if (!ignore) setAiAvailable(available)
+    })
+    return () => {
+      ignore = true
+    }
+  }, [])
+  if (aiAvailable === null) return <LoadingCards count={1} />
+  return aiAvailable ? <AiQuestPlanner /> : <QuestPlanner />
 }
 
 /** 地図を表示する前に、現在地を使ってよいかを聞く */
@@ -177,8 +193,7 @@ export function AdventurePage() {
       )}
 
       <Tabs label="冒険の切り替え" tabs={TABS} active={tab} onChange={(id) => setParams({ tab: id }, { replace: true })}>
-        {/* AI の API（backend）がある環境では Bedrock 経由の提案、ない公開版では従来のブラウザ内モック */}
-        {tab === 'ai' && (AI_QUEST_API_AVAILABLE ? <AiQuestPlanner /> : <QuestPlanner />)}
+        {tab === 'ai' && <QuestTab />}
         {tab === 'quests' && <CommonQuests />}
         {(tab === 'spots' || tab === 'zukan') && state.status === 'loading' && <LoadingCards count={2} />}
         {tab === 'spots' && state.status === 'ready' && <SpotList visits={state.data} position={position} onShowOnMap={showOnMap} />}
