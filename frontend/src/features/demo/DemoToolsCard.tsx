@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, ApiError, DEMO_COIN_AMOUNTS, DEMO_STEP_AMOUNTS, type DemoHistoryEntry, type DemoTools } from '../../api'
 import { ActionError, Badge, Card, CardTitle } from '../../components/ui'
+import { tourStore, useTour } from '../tour/tourStore'
 
 const formatTime = (iso: string) =>
   new Intl.DateTimeFormat('ja-JP', { timeZone: 'Asia/Tokyo', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(
@@ -18,6 +19,7 @@ export function DemoToolsCard({ onStepsChanged }: { onStepsChanged?: () => void 
 }
 
 function DemoToolsPanel({ demo, onStepsChanged }: { demo: DemoTools; onStepsChanged?: () => void }) {
+  const tour = useTour()
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -54,6 +56,11 @@ function DemoToolsPanel({ demo, onStepsChanged }: { demo: DemoTools; onStepsChan
       <p className="text-sm text-ink-soft">
         発表や動作確認のための操作です。ここで追加した歩数は「デモ操作で追加」として区別して記録し、正式ランキングには入りません。
       </p>
+      {!tour.active && (
+        <button type="button" onClick={() => tourStore.start()} className="mt-2 text-sm font-bold text-seto-700 underline">
+          操作ガイドを最初から見る
+        </button>
+      )}
 
       <p className="mt-3 text-sm font-bold">コインを追加</p>
       <div className="mt-1 grid grid-cols-3 gap-2">
@@ -82,6 +89,7 @@ function DemoToolsPanel({ demo, onStepsChanged }: { demo: DemoTools; onStepsChan
             key={steps}
             type="button"
             disabled={busy}
+            data-tour={`demo-steps-${steps}`}
             className="rpg-button bg-white px-1 text-base"
             onClick={() =>
               void run(async () => {

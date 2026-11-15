@@ -13,6 +13,7 @@ export function SideNav() {
             <NavLink
               to={item.to}
               end={item.to === '/'}
+              data-tour={`nav-${item.to}`}
               className={({ isActive }) =>
                 [
                   'flex min-h-12 items-center gap-3 rounded-xl border-2 px-3 text-lg',

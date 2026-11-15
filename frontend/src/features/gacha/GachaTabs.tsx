@@ -14,6 +14,7 @@ export function GachaTabs() {
           key={tab.to}
           to={tab.to}
           end
+          data-tour={tab.to === '/gacha/wardrobe' ? 'gacha-tab-wardrobe' : 'gacha-tab-draw'}
           className={({ isActive }) =>
             `flex min-h-12 items-center justify-center rounded-xl border-[3px] border-ink font-bold ${
               isActive ? 'bg-mikan-500 text-white shadow-[0_4px_0_0_var(--color-ink)]' : 'bg-white text-ink-soft'

@@ -53,7 +53,7 @@ function SpotList({
   )
   return (
     <ul className="grid gap-3 md:grid-cols-2" aria-label="観光スポット一覧">
-      {spots.map(({ spot, distance }) => (
+      {spots.map(({ spot, distance }, index) => (
         <li key={spot.spotId}>
           <Card className="flex h-full flex-col p-3">
             <div className="flex gap-3">
@@ -79,7 +79,11 @@ function SpotList({
               <button type="button" onClick={() => onShowOnMap(spot.spotId)} className="rpg-button bg-white px-2 text-base">
                 地図で見る
               </button>
-              <Link to={`/adventure/spots/${spot.spotId}`} className="rpg-button bg-mikan-100 px-2 text-base">
+              <Link
+                to={`/adventure/spots/${spot.spotId}`}
+                className="rpg-button bg-mikan-100 px-2 text-base"
+                data-tour={index === 0 ? 'spot-detail' : undefined}
+              >
                 くわしく・チェックイン
               </Link>
             </div>
@@ -163,7 +167,7 @@ export function AdventurePage() {
       {state.status === 'error' ? (
         <ErrorMessage message={state.message} onRetry={reload} />
       ) : (
-        <div className="relative">
+        <div className="relative" data-tour="adventure-map">
           {state.status === 'ready' && location.permission !== 'unknown' ? (
             <Suspense fallback={<div className="h-[52vh] min-h-72 animate-pulse rounded-2xl border-[3px] border-ink bg-seto-50" />}>
               <SpotMap
@@ -192,7 +196,13 @@ export function AdventurePage() {
         </p>
       )}
 
-      <Tabs label="冒険の切り替え" tabs={TABS} active={tab} onChange={(id) => setParams({ tab: id }, { replace: true })}>
+      <Tabs
+        label="冒険の切り替え"
+        tabs={TABS}
+        active={tab}
+        onChange={(id) => setParams({ tab: id }, { replace: true })}
+        tour="adventure-tab"
+      >
         {tab === 'ai' && <QuestTab />}
         {tab === 'quests' && <CommonQuests />}
         {(tab === 'spots' || tab === 'zukan') && state.status === 'loading' && <LoadingCards count={2} />}

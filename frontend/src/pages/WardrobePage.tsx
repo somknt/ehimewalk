@@ -167,7 +167,7 @@ export function WardrobePage() {
           )}
         </Card>
 
-        <Card>
+        <Card tour="wardrobe-items">
           <CardTitle aside={<span className="text-sm text-ink-soft">{owned.length} 個</span>}>持ち物</CardTitle>
           <ul className="flex flex-wrap gap-1.5">
             {owned.map((item) => (

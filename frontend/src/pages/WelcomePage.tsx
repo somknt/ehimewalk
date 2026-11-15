@@ -8,6 +8,7 @@ import type { Appearance, Character } from '../domain/types'
 import { AppearanceFields } from '../features/character/AppearanceFields'
 import { CharacterAvatar } from '../features/character/CharacterAvatar'
 import { pedometer } from '../features/pedometer/pedometer'
+import { isDemoUsername, tourStore } from '../features/tour/tourStore'
 import { useAction } from '../hooks/useAction'
 import { useSession } from '../session/sessionContext'
 
@@ -60,9 +61,17 @@ export function WelcomePage() {
 
   const submit = useAction(async () => {
     const next = await api.completeOnboarding({ username, characterName, appearance, topItemId, bottomItemId })
+    // ユーザー名「デモ」で始めた人（審査・お試し）には、操作ガイドを出す
+    if (api.demo !== null && isDemoUsername(username)) tourStore.start()
+    else tourStore.stop()
     setSession(next)
     navigate('/', { replace: true })
   })
+  const demoName = isDemoUsername(username)
+  const fillDemoName = () => {
+    setUsername('デモ')
+    if (!characterName.trim()) setCharacterName('みかん')
+  }
 
   if (session.profile.onboarded) return <Navigate to="/" replace />
 
@@ -114,6 +123,23 @@ export function WelcomePage() {
               maxLength={12}
               hint="12文字まで。本名は入れないでください。"
             />
+            <div className="rounded-xl border-[3px] border-dashed border-seto-600 bg-seto-50 p-3">
+              <p className="font-bold">審査・お試しの方へ</p>
+              <p className="mt-1 text-sm leading-relaxed">
+                ユーザー名に<span className="font-bold">「デモ」</span>と入力すると、
+                <span className="font-bold">デモモード</span>
+                で始まります。歩かなくても歩数やコインを足せて、現地に行かなくてもチェックインを試せます。最初に操作ガイドが出るので、順番にタップするだけでアプリをひととおり体験できます。
+              </p>
+              {demoName ? (
+                <p role="status" className="mt-2 rounded-lg bg-white px-3 py-2 text-center font-bold text-seto-700">
+                  ✓ デモモードで始めます（下の「この姿で冒険をはじめる」へ）
+                </p>
+              ) : (
+                <button type="button" onClick={fillDemoName} className="rpg-button mt-2 w-full bg-white text-base">
+                  ユーザー名を「デモ」にする
+                </button>
+              )}
+            </div>
           </Card>
 
           <Card>

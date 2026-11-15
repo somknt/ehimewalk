@@ -2,6 +2,8 @@ import { useEffect } from 'react'
 import { Link, Navigate, Outlet, useLocation } from 'react-router'
 import { api } from '../api'
 import { PedometerController } from '../features/pedometer/PedometerController'
+import { TourGuide } from '../features/tour/TourGuide'
+import { useTour } from '../features/tour/tourStore'
 import { useSession } from '../session/sessionContext'
 import { BottomNav } from './BottomNav'
 import { CoinBadge } from './CoinBadge'
@@ -24,6 +26,9 @@ function useScrollToTopOnNavigate() {
 export function AppLayout() {
   useScrollToTopOnNavigate()
   const { session } = useSession()
+  const tour = useTour()
+  // 操作ガイドを出している間は、ページの最後までガイドに隠れずに見えるよう下を空ける
+  const guiding = tour.active && api.demo !== null
 
   // 初回はキャラクター作成から始める
   if (!session.profile.onboarded) return <Navigate to="/welcome" replace />
@@ -59,7 +64,7 @@ export function AppLayout() {
 
       <div className="mx-auto max-w-md md:max-w-3xl lg:flex lg:max-w-6xl lg:gap-6 lg:px-6 lg:pt-6">
         <SideNav />
-        <main className="min-w-0 px-4 pt-4 pb-28 lg:flex-1 lg:px-0 lg:pt-0 lg:pb-10">
+        <main className={`min-w-0 px-4 pt-4 lg:flex-1 lg:px-0 lg:pt-0 ${guiding ? 'pb-[22rem] lg:pb-80' : 'pb-28 lg:pb-10'}`}>
           <Outlet />
         </main>
       </div>
@@ -67,6 +72,8 @@ export function AppLayout() {
       <BottomNav />
       {/* アプリを開いたら歩数の計測を自動で始める（どの画面でも計測・同期を続ける） */}
       <PedometerController />
+      {/* デモモードの操作ガイド */}
+      <TourGuide />
     </div>
   )
 }

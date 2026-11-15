@@ -35,7 +35,7 @@ export function TodayStepsCard({
   const percent = Math.round(steps.goalRate * 100)
 
   return (
-    <Card>
+    <Card tour="today-steps">
       <CardTitle aside={<Badge tone={source === 'demo' ? 'gray' : 'seto'}>{SOURCE_LABELS[source]}</Badge>}>
         今日の歩数
       </CardTitle>

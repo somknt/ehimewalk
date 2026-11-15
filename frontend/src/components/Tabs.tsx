@@ -11,10 +11,12 @@ interface TabsProps<T extends string> {
   active: T
   onChange: (id: T) => void
   children: ReactNode
+  /** 操作ガイドの目印。タブの並びに tour、各タブに「tour-タブのid」を付ける */
+  tour?: string
 }
 
 /** WAI-ARIA のタブ。左右キーでも切り替えられる */
-export function Tabs<T extends string>({ label, tabs, active, onChange, children }: TabsProps<T>) {
+export function Tabs<T extends string>({ label, tabs, active, onChange, children, tour }: TabsProps<T>) {
   const baseId = useId()
 
   const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
@@ -30,6 +32,7 @@ export function Tabs<T extends string>({ label, tabs, active, onChange, children
       <div
         role="tablist"
         aria-label={label}
+        data-tour={tour}
         className="grid gap-2"
         style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
       >
@@ -43,6 +46,7 @@ export function Tabs<T extends string>({ label, tabs, active, onChange, children
               role="tab"
               aria-selected={selected}
               aria-controls={`${baseId}-panel`}
+              data-tour={tour ? `${tour}-${tab.id}` : undefined}
               tabIndex={selected ? 0 : -1}
               onClick={() => onChange(tab.id)}
               onKeyDown={onKeyDown}

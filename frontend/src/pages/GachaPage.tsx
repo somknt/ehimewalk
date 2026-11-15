@@ -119,7 +119,13 @@ export function GachaPage() {
             <div className="mt-4 space-y-3">
               <GachaResultCard result={result} />
               <div className="grid gap-2 sm:grid-cols-2">
-                <button type="button" className="rpg-button bg-seto-300" disabled={wearing || equipping} onClick={() => void wear()}>
+                <button
+                  type="button"
+                  className="rpg-button bg-seto-300"
+                  disabled={wearing || equipping}
+                  onClick={() => void wear()}
+                  data-tour="gacha-wear"
+                >
                   {wearing ? '装備中' : equipping ? '装備しています…' : 'すぐに装備する'}
                 </button>
                 <Link to="/gacha/wardrobe" className="rpg-button bg-white">
@@ -136,6 +142,7 @@ export function GachaPage() {
                 className="rpg-button min-h-16 w-full bg-mikan-500 text-2xl text-white [text-shadow:1px_1px_0_var(--color-ink)] disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-ink-soft disabled:[text-shadow:none]"
                 disabled={short > 0 || busy}
                 onClick={() => void draw()}
+                data-tour="gacha-draw"
               >
                 {phase.kind === 'drawing'
                   ? '抽選しています…'

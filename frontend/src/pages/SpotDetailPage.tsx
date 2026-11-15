@@ -101,6 +101,7 @@ function CheckInCard({
           type="button"
           onClick={() => void checkIn.run(true)}
           disabled={checkIn.pending}
+          data-tour="demo-checkin"
           className="rpg-button mt-2 w-full bg-white text-base disabled:opacity-60"
         >
           デモ用：現地にいるものとしてチェックイン

@@ -99,7 +99,7 @@ export function RankingPage() {
   return (
     <div className="max-w-3xl space-y-4">
       <PageTitle lead="週間歩数で競おう。毎週月曜 0:00（日本時間）に新しい週が始まります。">ランキング</PageTitle>
-      <Tabs label="ランキングの種類" tabs={TABS} active={scope} onChange={setScope}>
+      <Tabs label="ランキングの種類" tabs={TABS} active={scope} onChange={setScope} tour="ranking-tab">
         <p className="mb-3">{DESCRIPTIONS[scope]}</p>
         {/* タブを切り替えた直後は前のタブのデータが残っているため、選択中のタブのデータが届くまで読み込み中にする */}
         {(state.status === 'loading' || (state.status === 'ready' && state.data.scope !== scope)) && <LoadingCards count={2} />}

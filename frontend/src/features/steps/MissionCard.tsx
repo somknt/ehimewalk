@@ -17,7 +17,7 @@ export function MissionCard({ mission, onAccepted }: { mission: WeeklyMission; o
   const alreadySet = session.profile.dailyGoal === mission.targetSteps
 
   return (
-    <Card className="bg-leaf-50">
+    <Card className="bg-leaf-50" tour="mission">
       <CardTitle aside={<Badge tone={mission.generatedBy === 'mock' ? 'gray' : 'leaf'}>{mission.generatedBy === 'mock' ? 'モック' : 'AI提案'}</Badge>}>
         今週の健康ミッション
       </CardTitle>

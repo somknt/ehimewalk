@@ -130,6 +130,7 @@ export function SwipePager({ pages, label }: { pages: PagerPage[]; label: string
                   role="tab"
                   aria-selected={selected}
                   aria-controls={`${baseId}-panel-${index}`}
+                  data-tour={`pager-${page.id}`}
                   tabIndex={selected ? 0 : -1}
                   onClick={() => goTo(index)}
                   onKeyDown={onKeyDown}

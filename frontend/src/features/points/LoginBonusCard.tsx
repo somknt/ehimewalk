@@ -28,6 +28,7 @@ export function LoginBonusCard() {
             type="button"
             onClick={() => void claim.run()}
             disabled={claim.pending}
+            data-tour="login-bonus"
             className="rpg-button mt-3 w-full bg-white disabled:opacity-60"
           >
             <CoinIcon size={20} />

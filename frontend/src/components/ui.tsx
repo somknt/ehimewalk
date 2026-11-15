@@ -1,8 +1,13 @@
 import type { ReactNode } from 'react'
 import type { Rarity } from '../domain/types'
 
-export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <section className={`rpg-card p-4 ${className}`}>{children}</section>
+/** tour：操作ガイドで光らせるときの目印（data-tour） */
+export function Card({ children, className = '', tour }: { children: ReactNode; className?: string; tour?: string }) {
+  return (
+    <section className={`rpg-card p-4 ${className}`} data-tour={tour}>
+      {children}
+    </section>
+  )
 }
 
 export function CardTitle({ children, aside }: { children: ReactNode; aside?: ReactNode }) {

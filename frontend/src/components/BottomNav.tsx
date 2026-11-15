@@ -16,6 +16,7 @@ export function BottomNav() {
             <NavLink
               to={item.to}
               end={item.to === '/'}
+              data-tour={`nav-${item.to}`}
               className={({ isActive }) =>
                 [
                   // 6 項目でも、幅 360px の端末で「ランキング」「マイページ」が 1 行に収まる文字サイズにしている

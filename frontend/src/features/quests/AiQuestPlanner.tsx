@@ -175,6 +175,7 @@ export function AiQuestPlanner() {
             type="submit"
             disabled={generate.pending || outOfQuota}
             aria-busy={generate.pending}
+            data-tour="ai-submit"
             className="rpg-button min-h-14 w-full bg-mikan-500 text-xl text-white [text-shadow:1px_1px_0_var(--color-ink)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {generate.pending ? 'AIが考えています…' : 'AIに散策コースを提案してもらう'}

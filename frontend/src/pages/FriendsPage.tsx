@@ -108,7 +108,7 @@ function AddFriendCard({ data, onChange }: { data: FriendsData; onChange: (data:
   }
 
   return (
-    <Card>
+    <Card tour="friend-add">
       <CardTitle>フレンドを追加</CardTitle>
       <form onSubmit={onSubmit} className="flex items-end gap-2">
         <label className="min-w-0 flex-1">

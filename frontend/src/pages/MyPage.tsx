@@ -12,6 +12,7 @@ import { CharacterAvatar } from '../features/character/CharacterAvatar'
 import { ShowcaseCard } from '../features/demo/ShowcaseCard'
 import { pedometer } from '../features/pedometer/pedometer'
 import { aiQuestHistory } from '../features/quests/aiQuestHistory'
+import { TourReplayCard } from '../features/tour/TourReplayCard'
 import { useAction } from '../hooks/useAction'
 import { useAsyncData } from '../hooks/useAsyncData'
 import { useSession } from '../session/sessionContext'
@@ -337,7 +338,9 @@ function DangerZone() {
   return (
     <Card className="border-red-700">
       <CardTitle>アカウント</CardTitle>
-      <p className="text-sm">ログインと、実際の利用者どうしのフレンドは、AWS連携（フェーズ2）で追加します。</p>
+      {api.mode === 'mock' && (
+        <p className="text-sm">ログインと、実際の利用者どうしのフレンドは、AWS連携（フェーズ2）で追加します。</p>
+      )}
       <button type="button" onClick={onClick} disabled={remove.pending} className="rpg-button mt-3 w-full bg-red-50 text-red-800">
         すべてのデータを削除する
       </button>
@@ -388,6 +391,7 @@ export function MyPage() {
               <VisitHistoryCard visits={state.data.visits} />
             </>
           )}
+          <TourReplayCard />
           <ShowcaseCard />
           <DangerZone />
         </div>
