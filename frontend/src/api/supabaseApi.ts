@@ -212,14 +212,17 @@ export class SupabaseGameApi implements GameApi {
     return (await this.getSession()).character
   }
 
-  completeOnboarding(input: OnboardingInput): Promise<SessionData> {
-    return this.rpc<SessionData>('complete_onboarding', {
+  async completeOnboarding(input: OnboardingInput): Promise<SessionData> {
+    // ユーザー名を「デモ」にすると、サーバーがデモ用アカウントにする（デモ操作の入口が出る）
+    const session = await this.rpc<SessionData & { profile: UserProfile & { isDemo?: boolean } }>('complete_onboarding', {
       p_username: input.username,
       p_character_name: input.characterName,
       p_appearance: input.appearance,
       p_top_item_id: input.topItemId,
       p_bottom_item_id: input.bottomItemId,
     })
+    this.isDemo = session.profile.isDemo === true
+    return session
   }
 
   updateProfile(patch: ProfilePatch): Promise<SessionData> {
